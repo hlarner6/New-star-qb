@@ -20,6 +20,20 @@ html,body{margin:0;height:100%;background:#140d2a;overflow:hidden;overscroll-beh
   image-rendering:pixelated;image-rendering:crisp-edges}
 #sa{position:absolute;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;
   padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+
+/* v112 panel: coach's tips over the menus */
+.tipov{position:fixed;inset:0;background:rgba(8,6,20,.72);display:flex;align-items:flex-end;justify-content:center;z-index:20;padding:0 12px calc(env(safe-area-inset-bottom,0px) + 90px)}
+.tipcard{background:var(--panel);border:3px solid var(--gold);box-shadow:0 0 0 3px #000,6px 6px 0 #000;padding:12px 14px;max-width:520px;width:100%;display:flex;flex-direction:column;gap:8px;font-size:21px;line-height:1.2}
+.tipcard .tiph{font-family:var(--px);font-size:12px;color:var(--gold);line-height:1.4}
+.tipcard .tipbtns{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:4px}
+.tipcard .tipbtns .primary{flex:1}
+/* v112 panel: phones lay the menus out 440 wide (career.js uiFit) */
+#cui.narrow .schoolgrid{grid-template-columns:1fr 1fr;gap:6px} #cui.narrow .schoolgrid .pick{font-size:15px;padding:6px;gap:3px;min-width:0} #cui.narrow .schoolgrid .pick .pt{font-size:10px;overflow-wrap:anywhere}
+#cui.narrow .mstrip small{white-space:normal;overflow:visible;text-overflow:clip;font-size:14px;line-height:1.05} #cui.narrow .mstrip b{font-size:10px}
+#cui.narrow .tabs .tab{font-size:8px;letter-spacing:-.5px;padding-left:1px;padding-right:1px;min-width:0;overflow:hidden}
+#cui.narrow .mstrip small{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+#cui.narrow .schoolgrid .pick{font-size:13px;line-height:1.02} #cui.narrow .schoolgrid .pskills{gap:0}
+#cui.narrow .logo .big{font-size:56px} #cui.narrow .tabs{--ic:34px;gap:4px}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap">
 <style>
@@ -720,7 +734,7 @@ function offTeam() { return CFG.teams[MATCHUP[0]] || CFG.teams.DEN; }
 // the QB on the field: [name, arm, accuracy, legs (run speed), vision]. A career QB from the match setup (RBMatch.start)
 // replaces the team's own QB. Team QBs have no vision rating, so their vision is their accuracy (the arc behaves as before)
 const MATCH = { setup: null, onEnd: null, last: null };
-const GAME_VERSION = 'v111';   // shown on the title and pause screens and in the playtest log, so a cached old copy is easy to spot
+const GAME_VERSION = 'v112';   // shown on the title and pause screens and in the playtest log, so a cached old copy is easy to spot
 function qbR() {
   const q = MATCH.setup && MATCH.setup.qb, t = offTeam().qb;
   if (!q) return t;
@@ -873,6 +887,7 @@ function layout() {
   cv.style.width = CSSW + 'px'; cv.style.height = CSSH + 'px';
   cv.style.top = SIDE ? '50%' : ''; cv.style.transform = SIDE ? 'translate(-50%,-50%) rotate(90deg)' : '';
   S = Math.max(1, Math.floor(devW / 262));   // HUD layer: crisp integer pixels
+  if (!SIDE && CSSW < 600 && devW / S > 300) S = devW / 262;   // v112 panel: on phones an integer scale left the HUD up to 50% too small; a fractional one keeps it ~262 px wide
   BW = Math.ceil((SIDE ? window.innerWidth * DPR : devW) / S); BH = Math.ceil((SIDE ? window.innerHeight * DPR : devH) / S);
   hud.width = BW; hud.height = BH;
   if (SIDE) { hud.style.cssText = 'position:absolute;left:0;top:0;width:100vw;height:100vh;pointer-events:none;image-rendering:pixelated;image-rendering:crisp-edges;z-index:1'; if (!hud.parentNode) cv.parentNode.insertBefore(hud, cv.nextSibling); }
@@ -881,7 +896,7 @@ function layout() {
   ST = Math.ceil(parseFloat(sa.paddingTop || 0) * DPR / S);
   SB = Math.ceil(parseFloat(sa.paddingBottom || 0) * DPR / S);
   STAD = ST + 13;   // only the score bar sits above the field
-  VIEW_T = STAD; VIEW_H = BH - SB - STAD; WT = SIDE ? 0 : VIEW_T * S;
+  VIEW_T = STAD; VIEW_H = BH - SB - STAD; WT = SIDE ? 0 : Math.round(VIEW_T * S);
   // World layer (bible §2): sprites at integer art pixels, players ~1.6yd tall, camera zoom continuous.
   // [P] the full 17.2yd width plus a sideline strip spans the screen; taller screens show more length (>= 31yd)
   PPY = Math.round(CFG.spriteArtPxTall / CFG.playerHeightYd);
@@ -2116,7 +2131,7 @@ let _seed = (Math.random() * 4294967296) >>> 0;
 function R() { _seed = (_seed + 0x6D2B79F5) >>> 0; let t = _seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
 const EV = [];
 let SIMT = 0;   // simulation clock (s): advances only when the game steps
-function ev(type, data) { const e = Object.assign({ t: +SIMT.toFixed(4), type }, data || {}); EV.push(e); if (EV.length > 8000) EV.splice(0, 1000); try { playTrack(e); } catch (x) {} return e; }
+function ev(type, data) { const e = Object.assign({ t: +SIMT.toFixed(4), type }, data || {}); EV.push(e); if (EV.length > 8000) EV.splice(0, 1000); try { playTrack(e); } catch (x) {} try { tutEv(e); } catch (x) {} return e; }
 // v64 (harrison: "look at all the play by play data"): one compact row per offensive snap for the playtest log
 function playTrack(e) {
   if (!G || G.drill) return;
@@ -3569,7 +3584,7 @@ function pathContest() {
     if (rusher && CFG.noRusherContest) continue;   // linemen and blitzers never bat or pick it (they sack instead, see throwBall)
     const q = 0.5 + 0.5 * Math.max(0, 1 - hyp(d.x - ball.x, d.y - ball.y) / reach);
     const low = ball.z <= CFG.pathLowBallYd ? CFG.pathLowBallPickBonus : 0;
-    const pPick = (rusher ? CFG.pathRushPickChance + low : CFG.pathPickChance) * q;
+    const pPick = (rusher ? CFG.pathRushPickChance + low : CFG.pathPickChance) * q * mod('pickMul', 1);
     const pBat = (rusher ? CFG.pathRushBatChance : CFG.pathBatChance) * q;
     const roll = R();
     ev('pathContest', { id: d.id, role: d.role, nearQB, rusher, pPick: +pPick.toFixed(3), roll: +roll.toFixed(3) });
@@ -3611,7 +3626,7 @@ function resolveCatch() {
   }
   const pDef = so <= 0 ? 1 : clamp(sd * sd * early * CFG.defContestGain * (1 + CFG.posContestWeight * edge) * (1 + CFG.smartContestAdd * rallyK()), 0, CFG.defContestMax);
   if (R() < pDef) {
-    const pPick = so <= 0 ? 0.6 + 0.35 * sd : Math.min(0.92, (CFG.contestedPickShare + CFG.contestedPickPerCloseness * sd + ((DIFF[diffTier()] || {}).pick || 0)) * (1 + CFG.posContestWeight * 0.6 * edge));
+    const pPick = mod('pickMul', 1) * (so <= 0 ? 0.6 + 0.35 * sd : Math.min(0.92, (CFG.contestedPickShare + CFG.contestedPickPerCloseness * sd + ((DIFF[diffTier()] || {}).pick || 0)) * (1 + CFG.posContestWeight * 0.6 * edge)));   // v112: pickMul (tutorial game, first starts at a new level) scales every pick
     info.pDef = +pDef.toFixed(3);
     if (R() < pPick) return intercept(dn, info);
     popText('BROKEN UP', ball.x, ball.y + 1.2, '#ffffff'); ev('breakup', info); return deflect();
@@ -4203,7 +4218,7 @@ function touchdown(r) {
   r.vy *= 0.5;
   if (G.twoPt) { G.score[0] -= 6; endPlay({ type: 'twoPt', good: true }, 2.0); return; }
   G.celeb = CELEBS[(Math.random() * CELEBS.length) | 0]; G.celebSpiked = false;   // visual only
-  endPlay({ type: 'td', spot: 100, scorer: r }, 3.0);   // 3s: room for the celebration (tap skips)
+  endPlay({ type: 'td', spot: 100, scorer: r }, 2.4);   // v112: 2.4s for the celebration (was 3; tap skips)
 }
 function endPlay(res, wait) {
   if (G.phase !== 'live') return;
@@ -4361,7 +4376,8 @@ function startSim(start, why) {
   // weighted by the CPU offense vs our defense (both 1-5 stars)
   const edge = (cpuOffEff() - CFG.ourDefStars) * 0.05;
   const ans = G.rivAnswer && rivalOn() ? CFG.rivalAnswerTD : 0; G.rivAnswer = false;
-  const pTD = clamp(0.17 + 0.25 * (start / 100) + edge + ans, 0.05, 0.75), pFG = 0.17, pTO = clamp(0.1 - edge * 0.5, 0.03, 0.2);
+  // v112 panel: a pick deep in your end is often a FG, not always 7 (pTD cap 0.6, more FGs on a short field)
+  const pTD = clamp(0.17 + 0.22 * (start / 100) + edge + ans, 0.05, 0.6), pFG = start >= 55 ? 0.24 : 0.17, pTO = clamp(0.1 - edge * 0.5, 0.03, 0.2);
   const r = R();
   let res, pts = 0, endY;
   if (r < pTD) { res = 'TOUCHDOWN'; pts = 7; endY = 100; }
@@ -4468,11 +4484,12 @@ const gBall = { x: 0, y: 0, z: 0, state: 'air', vis: true, trail: [] };
 // replay camera angles (harrison 2026-10-23): each replay picks one. Broadcast is the game camera; the others zoom
 // and follow the ball: tight, skycam (from behind, looking downfield), a slow push-in, and super slow-mo of the finish
 const RP_CAMS = [
-  { name: 'BROADCAST', speed: 0.5, secs: 6 },
-  { name: 'TIGHT', speed: 0.5, secs: 6, z: () => 2.0, ahead: 0 },
-  { name: 'SKYCAM', speed: 0.5, secs: 6, z: () => 1.45, ahead: 4 },
-  { name: 'PUSH IN', speed: 0.45, secs: 6, z: u => 1 + 1.1 * u * u, ahead: 1 },
-  { name: 'SUPER SLO-MO', speed: 0.28, secs: 2.6, z: () => 1.7, ahead: 0.5 },
+  // v112 panel (27 s from a TD to the next snap): the last 4 s of the play at 0.6x, about 6.5 s (tap still skips)
+  { name: 'BROADCAST', speed: 0.6, secs: 4 },
+  { name: 'TIGHT', speed: 0.6, secs: 4, z: () => 2.0, ahead: 0 },
+  { name: 'SKYCAM', speed: 0.6, secs: 4, z: () => 1.45, ahead: 4 },
+  { name: 'PUSH IN', speed: 0.55, secs: 4, z: u => 1 + 1.1 * u * u, ahead: 1 },
+  { name: 'SUPER SLO-MO', speed: 0.3, secs: 2, z: () => 1.7, ahead: 0.5 },
 ];
 function startReplay(next) {
   const cam = RP_CAMS[(Math.random() * RP_CAMS.length) | 0];   // visual only: plain Math.random, not the seeded game RNG
@@ -5547,7 +5564,7 @@ function drawHints() {
   if (G.phase === 'presnap') {
     if (G.choice || G.runCard) s = null;
     else if (G.kick) { s = G.kick.auto !== undefined ? (G.mode === 'punt' ? 'THE PUNTER' : 'THE KICKER') + ' LINES IT UP' : G.kick.stage === 0 ? 'TAP TO SET POWER' : 'TAP TO SET AIM'; y = BH - SB - 22; }
-    else { const h = G.drill ? DRILLS[G.drill.k].hint : G.play && G.play.run ? 'TAP FIELD TO SNAP' : (SIDE ? 'DRAG RIGHT TO SNAP AND THROW' : 'DRAG UP TO SNAP AND THROW'); s = G.hints.snap || ((G.t * 1.5) | 0) % 2 ? h : null; }
+    else { const h = G.drill ? DRILLS[G.drill.k].hint : G.picking ? 'YOUR CALL: TAP A PLAY - THEN DRAG UP TO SNAP' : G.play && G.play.run ? 'TAP FIELD TO SNAP' : (SIDE ? 'DRAG RIGHT TO SNAP AND THROW' : 'DRAG UP TO SNAP AND THROW'); s = G.hints.snap || ((G.t * 1.5) | 0) % 2 ? h : null; }
   } else if (G.phase === 'live') {
     if (G.sub === 'pocket' && G.hints.aim && !G.aim) s = (SIDE ? 'DRAG RIGHT' : 'DRAG UP') + ' TOWARD A RECEIVER - TAP RB TO HAND OFF';
     else if (G.sub === 'pocket' && G.aim && G.hints.aim && G.aim.show) s = 'RELEASE TO THROW - 2ND FINGER: BULLET';
@@ -5570,6 +5587,55 @@ function drawHints() {
     B.fillStyle = 'rgba(12,16,10,0.55)'; B.fillRect(Math.round(BW / 2 - t.width / 2) - 2, ly - 1, t.width + 4, t.height + 2);
     B.drawImage(t, Math.round(BW / 2 - t.width / 2), ly);
   }
+}
+// ---- v112 panel: the first HS game is the tutorial (career.js tutorialOn sets setup.tutorial). The coach talks you through
+// the controls on the first plays, with bullet time while you aim on the first few throws. Nothing ever stops the game.
+const TUT_SLOW = 0.5, TUT_SLOW_PASSES = 4;
+function tutOn() { return !!(MATCH.setup && MATCH.setup.tutorial) && !G.drill && !practice(); }
+function tutState() { return G.tut || (G.tut = { pass: 0, run: 0, catches: 0, ints: 0, scr: 0, flash: null }); }
+function tutFlash(title, lines, secs) { tutState().flash = { title, lines, until: SIMT + (secs || 3.5) }; }
+function tutEv(e) {
+  if (!G || !tutOn()) return; const T = tutState();
+  if (e.type === 'snap' && !e.kick) { if (G.play && G.play.run) T.run++; else T.pass++; }
+  else if (e.type === 'catch' && G.sub !== 'run' && ++T.catches === 1) tutFlash('NICE THROW', ['THAT IS THE WHOLE GAME: FIND SPACE, LEAD HIM, LET IT GO.']);
+  else if (e.type === 'int' && ++T.ints <= 2) tutFlash('PICKED OFF', ['A DEFENDER WAS CLOSER TO THE BALL THAN YOUR MAN.', 'THROW SOONER, OR PICK A RECEIVER WITH MORE ROOM.'], 4.5);
+  else if (e.type === 'scramble') T.scr++;
+}
+function tutTip() {
+  if (!tutOn() || G.phase === 'replay' || G.phase === 'over' || G.phase === 'select' || G.paused) return null;
+  const T = tutState();
+  if (T.flash && SIMT < T.flash.until) return T.flash;
+  if (G.phase === 'presnap') {
+    if (G.choice || G.kick || G.runCard) return null;
+    if (G.play && G.play.run) return T.run === 0 ? { title: 'RUN PLAY', lines: ['COACH CALLED A RUN. TAP THE FIELD TO SNAP.', 'YOUR RUNNING BACK TAKES IT FROM THERE.'] } : null;
+    if (T.pass === 0) return { title: 'THE SNAP', lines: ["THE GREEN LINES ARE YOUR RECEIVERS' ROUTES.", 'PUT YOUR THUMB ON THE FIELD AND DRAG UP TO SNAP. KEEP IT DOWN: THE SAME DRAG BECOMES YOUR AIM.'] };
+    if (T.pass === 2) return { title: 'BULLET OR LOB', lines: ['A NORMAL THROW IS A LOB THAT FLOATS OVER DEFENDERS.', 'WHILE AIMING, TAP A SECOND FINGER FOR A BULLET: FAST AND FLAT, BEST FOR SHORT THROWS.'] };
+    if (T.pass === 3) return { title: 'PRESSURE', lines: ['THE POCKET ONLY HOLDS FOR A COUPLE OF SECONDS.', 'NOBODY OPEN? DRAG DOWN TO SCRAMBLE.'] };
+    if (T.pass === 5 && canChangePlay()) return { title: 'CHANGE PLAY', lines: ["DON'T LIKE THE CALL? CHANGE PLAY (TOP LEFT) SWAPS IT. THREE A GAME."] };
+    return null;
+  }
+  if (G.phase === 'live') {
+    if (G.sub === 'pocket' && ball.holder === G.qb && !(G.play && G.play.run) && T.pass <= 2)
+      return G.aim && G.aim.show ? { title: 'LEAD HIM', lines: ["THE DOTS ARE THE BALL'S FLIGHT. THE BOX IS WHERE IT LANDS.", 'PUT THE BOX WHERE HE IS GOING, AWAY FROM DEFENDERS. LET GO TO THROW.'] }
+        : { title: 'THE THROW', lines: ['DRAG TOWARD A RECEIVER WITH NO DEFENDER CLOSE.'] };
+    if (G.sub === 'run' && G.ctrl && G.ctrl.isRunner && !cpuCarrier(G.ctrl) && T.scr <= 2) return { title: 'RUN WITH IT', lines: ['SWIPE LEFT OR RIGHT TO JUKE, UP TO DIVE, DOWN TO STOP.'] };
+  }
+  return null;
+}
+function tutWrap(str, maxW) {
+  const out = []; let cur = '';
+  for (const w of String(str).split(' ')) { const t = cur ? cur + ' ' + w : w; if (cur && txt(t, '#ffffff', 1, '#151515').width > maxW) { out.push(cur); cur = w; } else cur = t; }
+  if (cur) out.push(cur); return out;
+}
+function drawTut() {
+  const tip = tutTip(); if (!tip) return;
+  const pad = 5, maxW = BW - 12 - pad * 2, rows = [];
+  for (const l of tip.lines) rows.push(...tutWrap(l, maxW));
+  const x = 6, y = VIEW_T + 34, h = 12 + rows.length * 10 + pad, w = BW - 12;
+  B.fillStyle = 'rgba(10,8,26,0.86)'; B.fillRect(x, y, w, h);
+  B.fillStyle = '#ffd23a'; B.fillRect(x, y, w, 1); B.fillRect(x, y + h - 1, w, 1); B.fillRect(x, y, 1, h); B.fillRect(x + w - 1, y, 1, h);
+  drawTxt(B, "COACH: " + tip.title, x + pad, y + pad, '#ffd23a', { oc: '#000' });
+  rows.forEach((r, i) => drawTxt(B, r, x + pad, y + pad + 12 + i * 10, '#ffffff', { oc: '#151515', bold: false }));
 }
 function drawNameTag() {
   if (G.phase === 'sim' || G.phase === 'over' || (G.phase === 'presnap' && G.cards.length)) return;
@@ -5749,7 +5815,7 @@ function render() {
   drawBanner();
   if (G.phase === 'replay') drawReplayOverlay();
   else {
-    drawCards(); drawRunLog(); drawKickMeter(); drawNameTag(); drawHints(); drawRunCard(); drawClipButtons(); drawSim(); if (G.phase !== 'over') { drawRivalStrip(); drawGoalStrip(); } drawOver(); drawSelect();
+    drawCards(); drawRunLog(); drawKickMeter(); drawNameTag(); drawHints(); drawTut(); drawRunCard(); drawClipButtons(); drawSim(); if (G.phase !== 'over') { drawRivalStrip(); drawGoalStrip(); } drawOver(); drawSelect();
   }
   B = WB;
   // upscale: the field view is cropped around the camera focus by the current zoom (continuous, like Retro Bowl)
@@ -5918,6 +5984,7 @@ let PAUSED = QS.get('paused') === '1';
 function timeScale(dt) {
   if (FX.hitstop > 0) { FX.hitstop -= dt; return 0.04; }
   if (G.slowT > 0) { G.slowT -= dt; return G.slowS || 0.4; }
+  if (IN.mode === 'aim' && G.aim && G.aim.show && G.phase === 'live' && G.sub === 'pocket' && tutOn() && tutState().pass <= TUT_SLOW_PASSES) return TUT_SLOW;   // v112 tutorial bullet time
   if (CFG.aimSlowMo < 1 && IN.mode === 'aim' && G.aim && G.aim.show && G.phase === 'live' && G.sub === 'pocket') return CFG.aimSlowMo;
   return 1;
 }
@@ -6159,7 +6226,7 @@ const CARDS = {
 };
 const TRAIN_POINTS = 2;          // skill points for Quick reps (a Train card without the drill)
 const HANG_POINTS = 8;           // Team or Coach meter per Hang out
-const SKILL_COST = s => 10 + 4 * s;  // points from s to s+1 stars: 3 -> 22, 6 -> 34, 9 -> 46 (a season of all-Train is about +4-5 stars)
+const SKILL_COST = s => 10 + 4 * s + (s >= 8 ? (s - 7) * 20 : 0);   // v112 panel: stars 9 and 10 are a peak, not a plateau (8->9 62, 9->10 86)  // points from s to s+1 stars: 3 -> 22, 6 -> 34, 9 -> 46 (a season of all-Train is about +4-5 stars)
 // Train card drills (Phase 4): 20 seconds of live play (Long Bomb: 5 balls) on the real field with the real throw, one per skill.
 // score -> medal by the thresholds (bronze, silver, gold); the medal sets the skill points. Thresholds from the test bot (2026-10-22: a steady bot at 6 stars gets about silver; gold needs practice or more stars) [E]
 const DRILL_SECONDS = 20;
@@ -6265,7 +6332,7 @@ const HS_GROWTH = { scene: 0.5, game: 0.45 };
 const HS_DEF_DROP = 1;
 // XP (harrison 2026-10-23): games pay XP instead of skill points. Between games you make ONE call on where it goes: train a skill
 // (1 XP = 1 skill point) or put it into Coach, Team or Fans for a meter bump plus a boost for the next game only
-const HS_XP = { perGamePoint: 0.6, start: 8, meterBase: 4, meterPerXp: 0.5, meterMax: 15 };
+const HS_XP = { perGamePoint: 0.6, start: 16, meterBase: 4, meterPerXp: 0.5, meterMax: 15 };
 const HS_SPEND = {
   coach: { name: 'COACH', label: 'Extra film with Coach', boost: { skills: { vision: 1 }, note: "COACH'S GAME PLAN: +1 VISION" } },
   team: { name: 'TEAM', label: 'Team dinner for the O-line', boost: { mods: { pocketScale: 1.25 }, note: 'THE LINE HAS YOUR BACK: LONGER POCKET' } },
@@ -6280,13 +6347,13 @@ const HS_MY_POWER = 5;
 // harrison 2026-10-23: pick between better and worse schools. You are the same QB at each; your teammates' ratings
 // follow the school's power (1-10, HS_MY_POWER = average) and its regular-season record
 const HS_STYLES = [
-  { mascot: 'WILDCATS', power: 8, tag: 'POWERHOUSE', rec: [10, 0], blurb: 'Loaded roster, big crowds. Anything less than a title is a failure.',
+  { name: 'PREP', mascot: 'WILDCATS', power: 8, tag: 'POWERHOUSE', rec: [10, 0], blurb: 'Loaded roster, big crowds. Anything less than a title is a failure.',
     c: ['#5a2a8a', '#f2c230', '#5a2a8a', '#f2c230', '#ffffff', '#5a2a8a'] },
-  { mascot: 'EAGLES', power: 6, tag: 'CONTENDER', rec: [9, 1], blurb: 'A solid line and good hands. A real shot at state.',
+  { name: 'NORTH', mascot: 'EAGLES', power: 6, tag: 'CONTENDER', rec: [9, 1], blurb: 'A solid line and good hands. A real shot at state.',
     c: ['#0f4d2e', '#e8e8e8', '#0f4d2e', '#e8e8e8', '#ffffff', '#0f4d2e'] },
-  { mascot: 'TROJANS', power: 5, tag: 'AVERAGE', rec: [8, 2], blurb: 'An average team. How far it goes is up to you.',
+  { name: 'CENTRAL', mascot: 'TROJANS', power: 5, tag: 'AVERAGE', rec: [8, 2], blurb: 'An average team. How far it goes is up to you.',
     c: ['#9a1b1b', '#111111', '#9a1b1b', '#d8d8d8', '#ffffff', '#9a1b1b'] },
-  { mascot: 'BADGERS', power: 3, tag: 'UNDERDOG', rec: [6, 4], blurb: 'Snuck into the playoffs. Thin line, slow receivers. Carry them.',
+  { name: 'EAST', mascot: 'BADGERS', power: 3, tag: 'UNDERDOG', rec: [6, 4], blurb: 'Snuck into the playoffs. Thin line, slow receivers. Carry them.',
     c: ['#3a3a3a', '#e07a1a', '#3a3a3a', '#e07a1a', '#ffffff', '#3a3a3a'] },
 ];
 // the rest of the state bracket (made up). [town, mascot, primary, secondary]
@@ -7491,8 +7558,9 @@ function colSeasonEnd(c) {
   colRankUpdate(c);
   c.phase = 'summary'; c.cur = null; c.event = null;
   const r0 = c.rec[c.team];
-  if (col.gs >= 8 && ((r0.w >= 7 && (my.yds >= 3000 || my.td >= 28)) || my.yds >= 3800)) col.awards.push('ALL-' + conf);
-  if (col.elig === 0 && col.gs >= 6 && my.yds >= 2400 && r0.w >= 6) col.awards.push(conf + ' FRESHMAN OF THE YEAR');
+  const clean = my.td >= my.int * 1.5;   // v112 panel: a season of picks doesn't win awards
+  if (clean && col.gs >= 8 && ((r0.w >= 7 && (my.yds >= 3000 || my.td >= 28)) || my.yds >= 3800)) col.awards.push('ALL-' + conf);
+  if (clean && col.elig === 0 && col.gs >= 6 && my.yds >= 2400 && r0.w >= 6) col.awards.push(conf + ' FRESHMAN OF THE YEAR');
   if (c.po && c.po.champ === c.team) { col.awards.push('NATIONAL CHAMPIONS'); c.hype = clampM(c.hype + 12); }
   const rsNow = col.gpSeason <= 4 && !col.rs && col.yr < 5;
   if (rsNow) { col.rs = true; col.rsYear = c.season; } else col.elig++;
@@ -9419,9 +9487,10 @@ function nflSeasonEnd(c) {
   c.phase = 'done'; c.event = null;
   const conf = LEAGUE[c.team][0], qbs = Object.keys(LEAGUE).sort((x, y) => c.mvp[y] - c.mvp[x]), confQbs = qbs.filter(k => LEAGUE[k][0] === conf);
   const aw = [], real = N.gs >= 8;
-  if (real && qbs[0] === c.team) aw.push('MVP');
-  if (real && confQbs.indexOf(c.team) < 3) aw.push('PRO BOWL');
-  if (N.yr === 1 && N.gs >= 9 && (my.td >= 20 || my.yds >= 3200 || (my.w >= 9 && my.td >= 15))) aw.push('OFFENSIVE ROOKIE OF THE YEAR');
+  const clean = my.td >= my.int * 1.5, elite = my.td >= my.int * 2;   // v112 panel: picks count against awards
+  if (real && elite && qbs[0] === c.team) aw.push('MVP');
+  if (real && clean && confQbs.indexOf(c.team) < 3) aw.push('PRO BOWL');
+  if (clean && N.yr === 1 && N.gs >= 9 && (my.td >= 20 || my.yds >= 3200 || (my.w >= 9 && my.td >= 15))) aw.push('OFFENSIVE ROOKIE OF THE YEAR');
   if (po && po.champ === c.team) { aw.push('CHAMPION'); if (N.sbPlayed === c.season) aw.push('BIG GAME MVP'); }
   lifeSeasonAwards(c, aw, qbs);
   c.hype = clampM(c.hype + (aw.includes('ALL-PRO') ? 4 : 0) + (aw.includes('MVP') ? 10 : 0) + (aw.includes('PRO BOWL') ? 5 : 0) + (aw.includes('CHAMPION') ? 12 : 0) + (aw.includes('OFFENSIVE ROOKIE OF THE YEAR') ? 6 : 0));
@@ -10122,7 +10191,7 @@ const colNilPay = c => Math.round((1000 + Math.pow(c.hype || 0, 2) * 3) / 100) *
 const NFL_REC = { sTd: 55, sYds: 5477, cTd: 649, cYds: 89214 };
 function lifeSeasonAwards(c, aw, qbs) {
   const N = c.nfl, my = c.my, K = N.car, R = N.recs || (N.recs = { sTd: NFL_REC.sTd, sYds: NFL_REC.sYds, cTd: 0, cYds: 0 });
-  if (N.gs >= 12 && qbs.indexOf(c.team) < 2) aw.push('ALL-PRO');
+  if (N.gs >= 12 && my.td >= my.int * 2 && qbs.indexOf(c.team) < 2) aw.push('ALL-PRO');
   if (my.td > R.sTd) { aw.push('NFL RECORD: ' + my.td + ' TD PASSES IN A SEASON'); R.sTd = my.td; }
   if (my.yds > R.sYds) { aw.push('NFL RECORD: ' + my.yds + ' PASSING YARDS IN A SEASON'); R.sYds = my.yds; }
   if (!R.cTd && K.td > NFL_REC.cTd) { aw.push('NFL RECORD: MOST CAREER TD PASSES'); R.cTd = 1; }
@@ -10255,12 +10324,13 @@ function viewNFLContract(v) {
 // ---------- retirement, the Hall of Fame, the career summary ----------
 function lifeHofScore(c) {
   const N = c.nfl, K = N.car, A = c.awards, cnt = re => A.filter(a => re.test(a)).length;
-  return Math.round(K.td * 0.12 + K.yds / 1000 * 0.6 + K.w * 0.15 + cnt(/^\d+ MVP$/) * 12 + cnt(/^\d+ CHAMPION$/) * 10 + cnt(/PRO BOWL/) * 3 + cnt(/ALL-PRO/) * 5 + N.seasons.length);
+  // v112 panel (every test career went in on the first ballot): stats count less, awards and rings count the same, picks count against you
+  return Math.round(K.td * 0.06 + K.yds / 1000 * 0.35 + K.w * 0.12 - (K.int || 0) * 0.02 + cnt(/^\d+ MVP$/) * 12 + cnt(/^\d+ CHAMPION$/) * 10 + cnt(/PRO BOWL/) * 3 + cnt(/ALL-PRO/) * 5 + N.seasons.length);
 }
 function lifeRetire(c) {
   const N = c.nfl, score = lifeHofScore(c);
   c.phase = 'retired'; c.event = null;
-  c.hof = { score, inducted: score >= 60, first: score >= 85, step: 0, speech: null, age: c.age, year: c.season };
+  c.hof = { score, inducted: score >= 75, first: score >= 105, step: 0, speech: null, age: c.age, year: c.season };
   c.news.unshift(c.qb.name + ' RETIRES AT ' + c.age + ' AFTER ' + N.seasons.length + ' NFL SEASONS');
   ptLog('retire', { age: c.age, seasons: N.seasons.length, hof: score, td: N.car.td, yds: N.car.yds, rings: c.awards.filter(a => /^\d+ CHAMPION$/.test(a)).length, cash: c.cash });
   cSave();
@@ -10660,7 +10730,14 @@ function weekMods(c, home) {
   if (DIQ[c.level]) { const q = dIQState(c), L = DIQ[c.level], f = clamp((q.iq - L.lo) / (L.hi - L.lo), 0, 1), x = clamp((q.iq - L.hi) / (L.top - L.hi), 0, 1);
     m.smart = +q.iq.toFixed(3); m.covAdd = +(lerp(L.cov[0], L.cov[1], f) + x * (L.cov[2] - L.cov[1])).toFixed(3); m.defAdd = +(lerp(L.def[0], L.def[1], f) + x * (L.def[2] - L.def[1])).toFixed(2);
     if (q.scout && q.scout.n) m.scout = dIQPlan(q.scout); }
+  // v112 panel (picks jumped from 1.4 a game in HS to 3+ in college): the first starts at a new level ease in
+  const ez = easeIn(c); if (ez) { const f = 1 - (ez.n - 1) / ez.of; m.covAdd = +((m.covAdd || 0) - 0.3 * f).toFixed(3); m.defAdd = +((m.defAdd || 0) - 0.8 * f).toFixed(2); m.pickMul = +(1 - 0.6 * f).toFixed(2); m.easeIn = ez.n; }
   return m;
+}
+function easeIn(c) {
+  const K = c.level === 'college' ? c.col && c.col.car : c.level === 'nfl' ? c.nfl && c.nfl.car : null, of = c.level === 'college' ? 4 : 3;
+  if (!K || (K.gs || 0) >= of) return null;
+  return { n: (K.gs || 0) + 1, of };
 }
 // ---- v93 defense IQ (harrison: "in HS defenses aren't great, but the more you play well they keep getting better and better
 // and adjusting to your play"). One number per career: good games raise it, bad games lower it a little, inside each level's
@@ -10751,11 +10828,14 @@ function matchRival(c, opp) {
   if (c.level === 'nfl') return c.nfl && opp === c.nfl.rival.team ? c.nfl.rival.qb : null;
   return null;
 }
+// v112 panel: the first HS game teaches the controls as you play (engine.js tutorial tips + bullet time while you aim)
+function tutorialOn(c) { return c.level === 'hs' && !c.tutDone && !(c.my && c.my.gp) && !tipsOff(); }
 function matchSetup(c) {
-  const g = myGame(c), home = g.h === c.team, opp = home ? g.a : g.h, s = effSkills(c);
-  return { career: true, team: c.team, opponent: opp, home, mods: weekMods(c, home), uni: c.level === 'college' ? colUni(c, g) : null,
+  const g = c.level === 'hs' && c.showcase && c.showcase.live ? { h: c.team, a: c.showcase.opp, hs: true } : myGame(c), home = g.h === c.team, opp = home ? g.a : g.h, s = effSkills(c), tut = tutorialOn(c), mods = weekMods(c, home);
+  if (tut) { mods.covAdd = +((mods.covAdd || 0) - 0.2).toFixed(3); mods.pickMul = +((mods.pickMul || 1) * 0.6).toFixed(2); }   // v112: the learning game is kinder (looser coverage, fewer picks, weaker offense)
+  return { career: true, tutorial: tut, team: c.team, opponent: opp, home, mods, uni: c.level === 'college' ? colUni(c, g) : null,
     rival: matchRival(c, opp), qb: { name: shortName(c.qb.name), arm: s.arm, acc: s.acc, vision: s.vision, legs: s.legs, perk: c.qb.arch ? ARCHETYPES[c.qb.arch].perk : null, perks: (c.qb.abilities || []).slice(), look: c.qb.look },
-    cpuOffStars: clamp((c.level === 'hs' ? hsStars(opp) : c.level === 'college' ? colStars(opp) : offStars(opp)) + (c.story && c.story.next ? c.story.next.opp : 0), 1, 5), ourDefStars: clamp(CFG.teams[c.team].def || 3, 1, 5), week: c.week, phase: c.phase, round: c.po ? c.po.round : null };
+    cpuOffStars: clamp((c.level === 'hs' ? hsStars(opp) : c.level === 'college' ? colStars(opp) : offStars(opp)) + (c.story && c.story.next ? c.story.next.opp : 0) - (tut ? 1 : 0), 1, 5), ourDefStars: clamp(CFG.teams[c.team].def || 3, 1, 5), week: c.week, phase: c.phase, round: c.po ? c.po.round : null };
 }
 
 // ---- simulated games ----
@@ -11018,7 +11098,7 @@ addEventListener('rbmatchend', e => {
   if (!r || !r.setup || !r.setup.career || r.setup.lab || r.setup.practice || !CR.c || !CR.c.inMatch) return;
   arcPreResult(CR.c, r);   // v93 story arcs: tag the game, settle a payoff
   dIQAfterGame(CR.c, r);   // v93 defenses learn from how you played
-  const post = CR.c.level === 'hs' ? processHSResult(r) : CR.c.level === 'college' ? colFinishGame(CR.c, r, 'played') : CR.c.level === 'nfl' ? nflFinishGame(CR.c, r, 'played') : processResult(r);
+  const post = CR.c.level === 'hs' ? (CR.c.showcase && CR.c.showcase.live ? showcaseResult(r) : processHSResult(r)) : CR.c.level === 'college' ? colFinishGame(CR.c, r, 'played') : CR.c.level === 'nfl' ? nflFinishGame(CR.c, r, 'played') : processResult(r);
   arcPostResult(CR.c, post);
   setTimeout(() => uiShow('post'), FIXED ? 0 : 2600);
   return post;
@@ -11248,7 +11328,7 @@ function hsApply(c, fx, ups, ev) {
   if (fx.hype) c.hype = clampM(c.hype + fx.hype);
   if (fx.cash) c.cash = (c.cash || 0) + fx.cash;
   if (fx.xp) { c.xp = Math.max(0, (c.xp || 0) + fx.xp); ev.res += ' ' + (fx.xp > 0 ? '+' : '') + fx.xp + ' XP.'; }
-  for (const k in fx.pts || {}) { const n = hsPts(fx.pts[k]); addPts(k, n, ups); ev.res += ' +' + n + ' ' + SKILL_INFO[k].name + '.'; }
+  for (const k in fx.pts || {}) { const n = hsPts(fx.pts[k]); addPts(k, n, ups); ev.res += ' +' + n + ' ' + SKILL_INFO[k].name + ' XP.'; }   // v112 panel: progress toward the next star, not stars
 }
 // harrison 2026-10-23: skills are built over a whole career, so a scene or a game moves them only a little
 const hsPts = n => Math.max(1, Math.round(n * HS_GROWTH.scene));
@@ -11310,7 +11390,7 @@ function hsPick(i) {
   if (o.risk) { ev.lucky = crand() < o.risk.p; out = ev.lucky ? o.risk.good : o.risk.bad; }
   ev.res = hsFill(out.res || '', c);
   hsApply(c, out.fx || {}, ups, ev);
-  if (out.next) { hsCarry(c, out.next); ev.res += ' ' + gameDay(c) + ': ' + hsFill(out.next.note || '', c) + '.'; }
+  if (out.next) { hsCarry(c, out.next); ev.res += ' ' + gameDay(c) + ': ' + nextGameNote(hsFill(out.next.note || '', c)) + '.'; }
   if (out.flag) st.flags[out.flag] = (c.round || 0) + 1;
   if (o.flag) st.flags[o.flag] = (c.round || 0) + 1;
   if (o.fresh || out.fresh) c.fresh = true;
@@ -11342,15 +11422,17 @@ function viewHS(v) {
     : btn('PLAY THE ' + HS_ROUNDS[c.round], () => playPressed(), 'primary wide');
   v.append(el('div', { class: 'foot' }, foot), tabs);
 }
+// v112 panel: a one-game skill hit reads as one game ("-1 ARM NEXT GAME"), so it never looks like a lost star next to "+4 ARM XP"
+function nextGameNote(t) { return String(t).replace(/([+-]\d+) (ARM|ACCURACY|VISION|LEGS)\b(?! NEXT GAME)/g, '$1 $2 NEXT GAME'); }
 function hsFxText(o, c) {
   const one = (fx, nx) => {
     fx = fx || {}; const out = [];
-    for (const k in fx.pts || {}) out.push('+' + hsPts(fx.pts[k]) + ' ' + SKILL_INFO[k].name);
+    for (const k in fx.pts || {}) out.push('+' + hsPts(fx.pts[k]) + ' ' + SKILL_INFO[k].name + ' XP');
     for (const k of ['coach', 'team', 'fans']) if (fx[k]) out.push((fx[k] > 0 ? '+' : '') + fx[k] + ' ' + k.toUpperCase());
     if (fx.hype) out.push((fx.hype > 0 ? '+' : '') + fx.hype + (c.level === 'nfl' ? ' HYPE' : ' BUZZ'));
     if (fx.cash) out.push((fx.cash > 0 ? '+' : '') + fmtMoney(fx.cash) + (c.level === 'nfl' ? '' : ' NIL'));
     if (fx.xp) out.push((fx.xp > 0 ? '+' : '') + fx.xp + ' XP');
-    if (nx && nx.note) out.push(gameDay(c).toUpperCase() + ': ' + hsFill(nx.note, c));
+    if (nx && nx.note) out.push(gameDay(c).toUpperCase() + ': ' + nextGameNote(hsFill(nx.note, c)));
     return out.join(' · ') || 'NOTHING';
   };
   if (o.risk) return Math.round(o.risk.p * 100) + '% CHANCE: ' + one(o.risk.good.fx, o.risk.good.next) + ' / OTHERWISE: ' + one(o.risk.bad.fx, o.risk.bad.next);
@@ -11489,6 +11571,7 @@ function gameXp(c, r, won, k, upset) {
   return { total: sum, lines };
 }
 function processHSResult(r) {
+  CR.c.tutDone = true;
   const c = CR.c, opp = c.opps[c.round], before = { coach: c.meters.coach, team: c.meters.team, fans: c.meters.fans, hype: c.hype };
   const margin = r.score[0] - r.score[1], win = margin > 0, final = c.round === 3, m = c.meters, ups = [];
   if (!win && margin === 0) r.score[0]++;   // playoff games can't end tied: you win it in a shootout
@@ -11641,6 +11724,31 @@ function hsPaperView(c, p) {
     P.buzz ? el('div', { class: 'cols' }, el('div', {}, el('b', {}, 'THE BUZZ'), ...P.buzz.quotes.map(([w, t]) => el('div', { class: 'bz' }, t, el('cite', {}, ' - ' + w)))),
       P.buzz.lines.length ? el('div', {}, el('b', {}, 'STORYLINES'), ...P.buzz.lines.map(t => el('div', {}, t))) : null) : null);
 }
+// v112 panel (a first-timer lost round 1 and his senior year was one game): a first-round exit earns one more game,
+// the Senior Showcase against a weaker school, with XP and buzz for Signing Day. Once per career, never after a playoff win
+function showcaseOpen(c) { return c.level === 'hs' && c.phase === 'done' && !c.champ && c.results.length === 1 && !c.showcase; }
+function startShowcase() {
+  const c = CR.c, path = new Set(c.opps.concat(c.team));
+  const opp = Object.keys(HS_SCHOOLS).filter(k => !path.has(k)).sort((a, b) => (c.power[a] || 5) - (c.power[b] || 5))[0];
+  c.showcase = { opp, live: true }; c.power[opp] = Math.min(c.power[opp] || 3, 3); ensureHS(c);
+  kickoff();
+}
+function showcaseResult(r) {
+  const c = CR.c, S = c.showcase, before = c.hype;
+  if (r.score[0] === r.score[1]) r.score[0]++;
+  const won = r.score[0] > r.score[1];
+  S.live = false; S.res = r.score.slice();
+  const gx = gameXp(c, r, won, HS_XP.perGamePoint, 1); c.xp = (c.xp || 0) + gx.total;
+  c.hype = clampM(c.hype + 0.8 * ((r.passYds - 250) / 80 + (r.hl.tdPass - 2) * 1.2 - r.stats.int * 1.2 + (won ? 3 : -1)));
+  const my = c.my; my.gp++; my.att += r.stats.att; my.comp += r.stats.comp; my.yds += r.passYds; my.td += r.hl.tdPass; my.int += r.stats.int; my.sacks += r.stats.sacks;
+  const head = won ? c.qb.name + ' SHINES AT THE SENIOR SHOWCASE' : 'SCOUTS WATCH ' + c.qb.name + ' AT THE SENIOR SHOWCASE';
+  c.news.unshift(head);
+  CR.post = { head, opp: S.opp, home: true, score: r.score.slice(), win: won, margin: r.score[0] - r.score[1], stats: r.stats, passYds: r.passYds, hl: r.hl, fires: r.fires, gbUsed: 0,
+    hype: c.hype - before, meter: ['fans', 0], cash: 0, xp: gx.total, xpLines: gx.lines, ups: [], goal: null, playoff: true, round: 0, showcase: true };
+  ptLog('game', { showcase: true, opp: TEAMS[S.opp][0], score: r.score.join('-'), win: won, comp: r.stats.comp, att: r.stats.att, yds: r.passYds, td: r.hl.tdPass, int: r.stats.int, xpEarned: gx.total });
+  c.lastPost = CR.post; c.inMatch = false; cSave();
+  return CR.post;
+}
 function viewHSEnd(v) {
   const c = CR.c, my = c.my, stars = clamp(Math.round(c.hype / 20), 1, 5);
   v.append(el('div', { class: 'stakes' }, c.champ ? 'STATE CHAMPIONS!' : 'SENIOR SEASON OVER'),
@@ -11650,7 +11758,9 @@ function viewHSEnd(v) {
     el('div', { class: 'statgrid' }, ...[['GAMES', my.gp], ['COMP', my.comp + '/' + my.att], ['YARDS', my.yds], ['TD', my.td], ['INT', my.int], ['RECRUIT', '★'.repeat(stars)]].map(([a, b]) => el('div', {}, el('small', {}, a), el('b', {}, b)))),
     homeHead(c)[1],
     el('p', { class: 'sub' }, 'College coaches have been watching. Signing day is next: pick where you play the next three to five years.'),
-    el('div', { class: 'foot' }, btn('NATIONAL SIGNING DAY', () => uiShow('recruit'), 'primary wide'), btn('NEW CAREER', () => { CR.draft = null; uiShow('confirm'); }, 'small ghost'), btn('MENU', () => uiShow('title'), 'small ghost')));
+    showcaseOpen(c) ? el('p', { class: 'sub' }, 'One loss and it is over? Not quite. The state holds a SENIOR SHOWCASE for seniors whose seasons ended early. College scouts will be there.') : null,
+    showcaseOpen(c) ? el('div', { class: 'foot' }, btn('PLAY THE SENIOR SHOWCASE', () => startShowcase(), 'primary wide')) : null,
+    el('div', { class: 'foot' }, btn('NATIONAL SIGNING DAY', () => uiShow('recruit'), showcaseOpen(c) ? 'wide' : 'primary wide'), btn('NEW CAREER', () => { CR.draft = null; uiShow('confirm'); }, 'small ghost'), btn('MENU', () => uiShow('title'), 'small ghost')));
 }
 function hsEndRival(c) {
   const st = hsStory(c), R = TEAMS[st.rival], faced = c.results.length === 4;
@@ -11668,7 +11778,7 @@ function viewSchool(v) {
   HS_STYLES.forEach((st, i) => {
     const r = hsRoster(hsAbbr(town) + st.mascot, st.power || HS_MY_POWER), avg = ks => Math.round(ks.reduce((a, k) => a + r[k][1] + r[k][2], 0) / ks.length / 4);
     list.append(el('button', { class: 'pick team', style: 'border-color:' + st.c[0], onclick: () => { newHSCareer(Object.assign({}, d, { style: i })); CR.tab = 'home'; uiShow('home'); } },
-      el('div', { class: 'pt' }, el('span', { class: 'chip', style: 'background:' + st.c[0] + ';color:#fff;border-color:' + st.c[1] }, town.slice(0, 3)), ' ' + town + ' ' + st.mascot,
+      el('div', { class: 'pt' }, el('span', { class: 'chip', style: 'background:' + st.c[0] + ';color:#fff;border-color:' + st.c[1] }, town.slice(0, 3)), ' ' + town + (st.name ? ' ' + st.name : '') + ' ' + st.mascot,
         el('span', { class: 'vibe' }, '  ' + (st.tag || '') + ' · ' + (st.rec || [8, 2]).join('-'))),
       el('div', {}, st.blurb || ''),
       el('div', { class: 'pskills' }, el('span', {}, 'LINE ', stars(r.ol)), el('span', {}, 'RECEIVERS ', stars(clamp(avg(['X', 'Z', 'S', 'Y']), 1, 5))),
@@ -11694,8 +11804,11 @@ function uiRoot() {
 }
 // harrison 2026-10-23: menus fill the screen. The layout is designed ~560px wide; bigger screens zoom it up so the type,
 // buttons and cards grow to the full width and height (iPad 820x1180 -> x1.44), phones stay at x1
+// v112 panel (phones cut off the school cards, the tab bar and the meter labels): narrow screens lay the menus out 440 wide
+// and zoom that down to the screen, with a few phone rules in index.html (#cui.narrow)
 function uiFit() {
-  const root = uiRoot(), z = Math.max(1, Math.min(innerWidth / 560, innerHeight / 900));
+  const root = uiRoot(), narrow = innerWidth < 520, z = narrow ? innerWidth / 440 : Math.max(1, Math.min(innerWidth / 560, innerHeight / 900));
+  root.classList.toggle('narrow', narrow);
   root.style.zoom = z; root.style.setProperty('--vh', (innerHeight / z) + 'px');
 }
 addEventListener('resize', () => { if (CR.root && !CR.root.hidden) uiFit(); });
@@ -11715,6 +11828,49 @@ function uiShow(screen) {
   uiFit();
   ({ paper: viewPaper, title: viewTitle, create: viewCreate, arch: viewArch, team: viewTeam, home: viewHome, pre: viewPre, post: viewPost, end: viewEnd, backup: viewBackup, confirm: viewConfirm, drill: viewDrill, drillpost: viewDrillPost, school: viewSchool, hsevent: viewHS, pause: viewPause, recruit: viewRecruit, chal: viewChal, old: viewOld }[screen] || (window.LAB_VIEWS || {})[screen] || viewTitle)(v);
   if (CR.c) cSave();
+  showTip(root, screen);
+}
+// ---- v112 panel: COACH'S TIPS, a short note the first time you open each career screen (per device; title turns them off/on) ----
+const TIPS_KEY = 'rbv-tips';
+function tipsGet() { try { return JSON.parse(localStorage.getItem(TIPS_KEY) || '{}') || {}; } catch (e) { return {}; } }
+function tipsPut(o) { try { localStorage.setItem(TIPS_KEY, JSON.stringify(o)); } catch (e) {} }
+function tipsOff() { return !!tipsGet()._off || ((PAUSED || FIXED) && QS.get('tips') !== '1'); }
+const MENU_TIPS = {
+  hshome: ['YOUR WEEK', ['Each week starts with a scene. Pick how you handle it: it moves your meters or your skills.', 'COACH decides if you start, and at ' + METER_FX.coach.pickAt + ' you call your own plays. TEAM is how long your line holds. FANS make the home crowd loud.', 'Spend XP in the SHOP, then play the game.']],
+  shop: ['THE XP SHOP', ['Games and scenes pay XP. Spend it on stars: ARM throws farther and faster, ACCURACY means less wobble, VISION gives a longer aim line, LEGS help you scramble and hold the pocket.', 'A GAME BOOST helps for one game only. Leftover XP carries over.']],
+  store: ['THE STORE', ['Money buys things that last: some pay you back every game, some boost a meter, some just look good.', 'Buy one and check MY STUFF to see what it does.']],
+  bracket: ['THE BRACKET', ['Four rounds. Lose once and senior year is over, so make every game count.', 'Your rival is on the other side of the bracket. If you both win out, you meet in the final.']],
+  pre: ['GAME DAY', ['These notes list what is different this game: your scene, your meters and how smart the defense is.', 'Defenses start out ASLEEP. Play well and they wake up and start reading your habits.']],
+  post: ['AFTER THE GAME', ['Your stats pay XP. A win pays more, and picks cost you XP and Coach.', 'The paper and the podium are extra. Tap CONTINUE when you are ready.']],
+  recruit: ['SIGNING DAY', ['QB1: you start. BATTLE: you compete for the job. QB2: you sit until you beat the starter in a practice challenge.', 'Bigger schools bring more buzz, better teammates and tougher competition for the job.']],
+  colhome: ['COLLEGE', ['Twelve games, then a bowl or the playoff. Win the conference and you can play for a national title.', 'The coach sets a goal each season. NIL money from games buys perks in the STORE.']],
+  nflhome: ['THE NFL', ['Seventeen games, then the playoffs. You get paid for every game and every TD pass.', 'When your contract runs out, teams make offers. LIFE has your house, your trophies and the store.']],
+  league: ['THE LEAGUE', ['Standings and the MVP race. The top seven in each conference make the playoffs.']],
+  offseason: ['THE OFFSEASON', ['One summer decision, plus the coaching changes and the news around the league.', 'Then start the season.']],
+  chal: ['PRACTICE CHALLENGE', ['Ten live snaps against the starter\'s numbers. Beat him and the job is yours.']],
+  plays: ['YOU CALL THE PLAYS', ['Coach trusts you now. Before each snap, tap one of the play cards at the bottom, then drag up to snap.', 'Let Coach drop under ' + METER_FX.coach.pickAt + ' and he takes the play sheet back.']],
+};
+function tipKey(screen) {
+  const c = CR.c; if (!c) return null;
+  if (screen === 'home') {
+    if (c.abPend) return null;
+    if (c.meters && c.meters.coach >= METER_FX.coach.pickAt && c.level) return 'plays';
+    if (c.level === 'hs') return c.phase === 'done' ? null : CR.tab === 'shop' ? 'shop' : CR.tab === 'bracket' ? 'bracket' : CR.tab === 'home' ? 'hshome' : null;
+    if (c.off) return 'offseason';
+    if (CR.tab === 'shop') return CR.shopSub === 'store' ? 'store' : 'shop';
+    if (CR.tab === 'league') return 'league';
+    if (CR.tab === 'home') return c.level === 'college' ? 'colhome' : c.level === 'nfl' ? 'nflhome' : null;
+    return null;
+  }
+  return ['pre', 'post', 'recruit', 'chal'].includes(screen) ? screen : null;
+}
+function showTip(root, screen) {
+  if (tipsOff()) return;
+  const k = tipKey(screen), T = k && MENU_TIPS[k], seen = tipsGet(); if (!T || seen[k]) return;
+  const ov = el('div', { class: 'tipov' }), close = () => { const o = tipsGet(); o[k] = 1; tipsPut(o); ov.remove(); };
+  ov.append(el('div', { class: 'tipcard' }, el('div', { class: 'tiph' }, "COACH'S TIP · " + T[0]), ...T[1].map(t => el('p', {}, t)),
+    el('div', { class: 'tipbtns' }, btn('GOT IT', close, 'primary'), btn('NO MORE TIPS', () => { const o = tipsGet(); o._off = 1; tipsPut(o); ov.remove(); }, 'small ghost'))));
+  root.append(ov);
 }
 const btn = (label, fn, cls) => el('button', { class: 'btn ' + (cls || ''), onclick: e => { audioInit(); sfx('select'); fn(e); } }, label);
 function stars(n, max) { const s = el('span', { class: 'stars' }); for (let i = 1; i <= (max || 10); i++) s.append(el('i', { class: i <= n ? 'on' : '' })); return s; }
@@ -11745,7 +11901,7 @@ function recStr(k) { const r = CR.c.rec[k]; return r.w + '-' + r.l + (r.t ? '-' 
 function viewTitle(v) {
   const c = CR.c;
   labRestore();
-  v.append(el('div', { class: 'logo' }, el('div', { class: 'big' }, 'QB'), el('div', {}, 'CAREER')),
+  v.append(el('div', { class: 'logo' }, el('div', {}, 'NEW STAR'), el('div', { class: 'big' }, 'QB')),
     el('p', { class: 'sub', style: 'text-align:center;max-width:none' }, 'Senior year. The state playoffs start Friday. You are the quarterback.'));
   const box = el('div', { class: 'stack' });
   const sm = saveLoad().match, resumable = c && c.inMatch && sm && sm.setup && sm.setup.career;
@@ -11761,6 +11917,7 @@ function viewTitle(v) {
   box.append(btn('QUICK GAME', () => { uiHide(); MATCH.setup = null; CFG.cpuOffStars = STAR_DEFAULTS.cpuOffStars; CFG.ourDefStars = STAR_DEFAULTS.ourDefStars; newGame(); G.phase = 'select'; }));
   if (!SHARE) box.append(btn('PLAYTEST LAB', () => uiShow('lab'), 'lab'));
   box.append(soundBtn());
+  { const tb = btn("COACH'S TIPS: " + (tipsGet()._off ? 'OFF' : 'ON'), () => { const o = tipsGet(); if (o._off) { for (const k in o) delete o[k]; } else o._off = 1; tipsPut(o); tb.textContent = "COACH'S TIPS: " + (o._off ? 'OFF' : 'ON'); }, 'small ghost'); box.append(tb); }
   box.append(btn('BACKUP SAVE', () => uiShow('backup'), 'small ghost'));
   if (PTDB) oldList().then(sl => { if (sl.length && CR.screen === 'title') box.insertBefore(btn('OLD CAREERS (' + sl.length + ')', () => uiShow('old')), box.lastChild); });
   if (!c && PTDB) cloudLoad().then(cl => { if (!cl || CR.screen !== 'title' || CR.c) return;
@@ -11885,10 +12042,11 @@ function faces(c) {
 }
 function meterEffect(k, c) {
   const v = c.meters[k], F = METER_FX;
-  if (k === 'coach' && c.level === 'college' && c.col.depth === 'backup') return (c.col.deep ? 'QB3' : 'QB2') + ': beat the guy ahead of you in practice to move up';
-  if (k === 'coach' && c.level === 'nfl' && c.nfl.depth === 'backup') return c.nfl.slot + ': beat the guy ahead of you in practice to move up';
+  if (k === 'coach' && c.level === 'college' && c.col.depth === 'backup') return (c.col.deep ? 'QB3' : 'QB2') + ': win practice to move up';
+  if (k === 'coach' && c.level === 'nfl' && c.nfl.depth === 'backup') return c.nfl.slot + ': win practice to move up';
   if (k === 'coach' && c.level === 'nfl' && v < NFL.loseJobAt) return 'Under ' + NFL.loseJobAt + ' you lose the job';
-  if (k === 'coach') return (v >= F.coach.audibleAt ? 'Free audible each drive' : v < F.coach.benchAt && !c.level ? 'You are QB2' : v < COL.loseJobAt && c.level === 'college' ? 'Under ' + COL.loseJobAt + ' you lose the job' : v < F.coach.leashAt ? 'Short leash: 2 picks = benched' : 'You start') + (v >= F.coach.pickAt ? '. You pick the plays' : v >= 60 ? '. Calls more passes' : v < 40 ? '. Calls more runs' : '') + (c.level && v >= COACH_4TH_AT ? '. You call 4th downs' : '');
+  // v112 panel: the strip says who calls the plays (the pregame notes have the rest)
+  if (k === 'coach') return v >= F.coach.audibleAt ? 'Your plays + audibles' : v >= F.coach.pickAt ? 'You call the plays' : v < F.coach.benchAt && !c.level ? 'You are QB2' : v < COL.loseJobAt && c.level === 'college' ? 'Under ' + COL.loseJobAt + ' you lose the job' : v < F.coach.leashAt ? 'Short leash: 2 picks = benched' : 'Your plays at ' + F.coach.pickAt;
   if (k === 'team') return v >= F.team.high ? 'Pocket 2.2s, more stiff arms' : v < F.team.low ? 'Pocket 1.2s' : 'Pocket 1.6s';
   return v >= F.fans.loudAt ? 'Home crowd slows CBs on 3rd down' : v < F.fans.booAt ? 'Booed at home' : 'Normal crowd';
 }
@@ -11922,7 +12080,7 @@ function xpCta(c) { return (c.xp || 0) > 0 ? btn('\u2B50 ' + c.xp + ' XP TO SPEN
 // bottom tabs for a career level, plus the menu
 function homeTabs(list) {
   const sv = saveBtn('\u{1F4BE}', 'tab menu'); sv.setAttribute('aria-label', 'Save');   // v95 manual save
-  const t = el('div', { class: 'tabs', style: 'grid-template-columns:repeat(' + list.length + ',1fr) 52px 52px' }, ...list.map(([k, n]) => el('button', { class: 'tab' + (CR.tab === k ? ' on' : ''), onclick: () => { CR.tab = k; uiShow('home'); } }, n)),
+  const t = el('div', { class: 'tabs', style: 'grid-template-columns:repeat(' + list.length + ',1fr) var(--ic,52px) var(--ic,52px)' }, ...list.map(([k, n]) => el('button', { class: 'tab' + (CR.tab === k ? ' on' : ''), onclick: () => { CR.tab = k; uiShow('home'); } }, n)),
     sv, el('button', { class: 'tab menu', 'aria-label': 'Menu', onclick: () => uiShow('title') }, '\u2630'));
   return t;
 }
@@ -12075,6 +12233,7 @@ function viewPre(v) {
   const s = effSkills(c), mods = weekMods(Object.assign({}, c, { story: null }), home), notes = [];   // this week's scene effects are listed by their own notes
   const iqN = dIQNotes(c, mods);   // v93: defense IQ rides on the difficulty line
   notes.push((c.level === 'hs' ? 'DIFFICULTY: HARD' : 'DIFFICULTY: EXTREME') + (iqN.length ? ' · ' + iqN[0] : ''));
+  notes.push(mods.playPicker ? 'YOU CALL THE PLAYS: PICK A CARD BEFORE EACH SNAP (COACH ' + METER_FX.coach.pickAt + '+)' : 'COACH CALLS THE PLAYS. RAISE COACH TO ' + METER_FX.coach.pickAt + ' AND YOU CALL THEM');   // v112 panel
   if (mods.coachDecides) notes.push('COACH CALLS 4TH DOWNS AND 2-POINT TRIES (YOURS AT COACH ' + COACH_4TH_AT + ')');
   if (c.fresh) notes.push('FRESH: +1 EVERY SKILL'); if (c.film) notes.push('FILM STUDY: +1 VISION'); if (c.cond === 'banged') notes.push('BANGED UP: LEGS -1');
   if (mods.pocketScale) notes.push(mods.pocketScale > 1 ? 'YOUR LINE WILL FIGHT: LONGER POCKET' : 'YOUR LINE IS COLD ON YOU: SHORT POCKET');
@@ -12082,6 +12241,7 @@ function viewPre(v) {
   const nx = c.story && c.story.next;
   if (mods.thirdDownCbReactS) notes.push('LOUD HOUSE: CBS LATE ON 3RD DOWN'); if (mods.aimJitter) notes.push('THE CROWD IS BOOING YOU');
   if (nx) notes.push(...nx.notes);
+  if (mods.easeIn) notes.push('NEW LEVEL: DEFENSES EASE YOU IN (START ' + mods.easeIn + ' OF ' + easeIn(c).of + ')');
   if (mods.streak > 0) notes.push(c.streak + ' WINS IN A ROW: TIGHTER COVERAGE');
   if (mods.streak < 0) notes.push(-c.streak + ' LOSSES IN A ROW: DEFENSES ARE SLEEPING ON YOU. A LITTLE MORE ROOM');
   notes.push(...iqN.slice(1));
@@ -12105,7 +12265,7 @@ function viewPost(v) {
       el('div', { class: 'final' }, TEAMS[c.team][1] + ' ' + p.score[0] + ', ' + TEAMS[p.opp][1] + ' ' + p.score[1]), p.benched ? null : el('p', { class: 'line' }, line),
       P.buzz && P.buzz.quotes[0] ? el('blockquote', {}, P.buzz.quotes[0][1], el('cite', {}, ' - ' + P.buzz.quotes[0][0])) : null,
       btn('READ THE FULL PAPER', () => uiShow('paper'), 'small'))
-    : el('div', { class: 'paper' }, el('div', { class: 'mast' }, (c.level === 'hs' ? 'THE TOWN CRIER · ' + HS_ROUNDS[p.round] : 'THE DAILY SNAP · ' + (p.playoff ? ROUNDS[p.round] : 'WEEK ' + p.week))), el('h1', {}, p.head),
+    : el('div', { class: 'paper' }, el('div', { class: 'mast' }, (c.level === 'hs' ? 'THE TOWN CRIER · ' + (p.showcase ? 'SENIOR SHOWCASE' : HS_ROUNDS[p.round]) : 'THE DAILY SNAP · ' + (p.playoff ? ROUNDS[p.round] : 'WEEK ' + p.week))), el('h1', {}, p.head),
     el('div', { class: 'final' }, TEAMS[c.team][1] + ' ' + p.score[0] + ', ' + TEAMS[p.opp][1] + ' ' + p.score[1]),
     p.benched === 'QB2' ? el('p', {}, 'Coach went with the backup. Raise the Coach meter (Hang out with Coach) to win your job back.') :
       el('p', { class: 'line' }, c.qb.name + ': ' + p.stats.comp + '/' + p.stats.att + ', ' + p.passYds + ' YDS, ' + p.hl.tdPass + ' TD, ' + p.stats.int + ' INT' + (p.stats.sacks ? ', SACKED ' + p.stats.sacks : '') + (p.hl.longest ? ', LONG ' + p.hl.longest : ''))),
@@ -12165,7 +12325,7 @@ function sceneTradeoffs(lists) {
     if (kind === 'throw') tired('arm');
     else if (kind === 'legs') tired('legs');
     else if (kind === 'film') { if (!fx.team) fx.team = meter; else fx.fans = meter; }
-    else if (kind === 'team' || kind === 'fans') { if (!fx.coach) fx.coach = meter; else fx.xp = -2; }
+    else if (kind === 'team' || kind === 'fans') { if (eyePts > 0 && !fx.fans && kind === 'team') fx.fans = meter; else if (!fx.coach) fx.coach = meter; else fx.xp = -2; }   // v112 panel: learning from a vet never costs the coach
     else if (kind === 'coach') { if (!fx.fans && !fx.hype) fx.fans = meter; else if (!fx.team) fx.team = meter; else fx.xp = -2; }   // v63 story pass: the quiet, coach-pleasing choice costs buzz, not the locker room
     else fx.xp = -clamp(Math.round(size * 0.5), 1, 3);
   });
@@ -12691,9 +12851,9 @@ const OFF_EVENTS = [
     { label: 'Buy her the house she wants', fx: { cash: -1500000, fans: 6 }, mflag: 'momhouse', res: 'She cries in the driveway. Then she asks if the leak can come too.' },
     { label: 'Fix the roof and fill her fridge', fx: { cash: -60000, team: 2 }, mflag: 'momhouse', res: 'She hugs the roofer. She hugs you longer.' },
     { label: 'Invest it. She can wait', fx: { cash: 0, hype: -3 }, res: 'Your financial advisor is proud. Your mom tells the local paper you "forgot." It runs on page one.' } ] },
-  { id: 'o_found', lvl: 'nfl', pri: 2, memNot: 'found', cond: c => c.cash >= 5e6 && c.nfl.yr >= 3, title: 'YOUR FOUNDATION', text: 'A school in {TOWN} is cutting its football team. They need new helmets, a coach\'s salary and lights for the field. The principal asks if you can help.', opts: [
+  { id: 'o_found', lvl: 'nfl', pri: 2, memNot: 'found', cond: c => c.cash >= 5e6 && c.nfl.yr >= 3 && !memOf(c).f.gift, title: 'YOUR FOUNDATION', text: 'A school in {TOWN} is cutting its football team. They need new helmets, a coach\'s salary and lights for the field. The principal asks if you can help.', opts: [
     { label: 'Start a foundation and fund all of it', fx: { cash: -2000000, fans: 10, hype: 4 }, mflag: 'found', res: 'The {LAST} Foundation is born. The first game under the new lights sells out.' },
-    { label: 'Write one big check', fx: { cash: -300000, fans: 5 }, res: 'They name the scoreboard after you. It has your face on it. It is a bad picture.' },
+    { label: 'Write one big check', fx: { cash: -300000, fans: 5 }, mflag: 'gift', res: 'They name the scoreboard after you. It has your face on it. It is a bad picture.' },
     { label: 'Pass. Somebody else will do it', fx: { fans: -6 }, res: 'Somebody else does. The paper notices who did not.' } ] },
   // college summers
   { id: 'o_spring', lvl: 'college', title: 'THE SPRING GAME', text: 'Forty thousand people at a practice. The coaches want to see the young guys. The fans want to see you throw it deep.', opts: [
@@ -12761,6 +12921,19 @@ const OFF_EVENTS = [
   { id: 'o_callback_vow', lvl: 'both', mem: 'vow', memOnce: true, title: 'THE VOW', text: 'After {RIVQ} beat you, you told the press "see you next year." The clip has been playing on a loop all summer.', opts: [
     { label: 'Put it on your lock screen', fx: { pts: { acc: 4, vision: 2 }, team: 2 }, res: 'Every time you check the time, there it is.' },
     { label: 'Laugh about it on a podcast', fx: { hype: 5, coach: -2 }, res: 'The podcast does a whole episode on it. {RIVQ} calls in.' } ] },
+  // v112 panel ("after NFL year 4 the summers feel samey"): late-career beats
+  { id: 'o_hshome', lvl: 'nfl', minAge: 29, memOnce: true, cond: c => !!(memOf(c).hs && memOf(c).hc), title: 'BACK TO {HSN}', text: '{HC} calls. {HSN} wants to retire your number at homecoming, and the kids want to know if you will run their summer camp.', opts: [
+    { label: 'Run the camp all week', fx: { fans: 8, xp: -3 }, res: 'Ninety kids, one week, a lot of sunburn. {HC} cries at the jersey ceremony and blames the wind.' },
+    { label: 'Pay for new turf and lights', fx: { cash: -400000, fans: 6 }, res: 'The new field has your number painted at midfield. The kids are not allowed to stand on it. They stand on it.' },
+    { label: 'Send a signed jersey and a video', fx: { pts: { vision: 3 }, fans: -3 }, res: 'The video plays on the scoreboard. You spend the week in the film room. {HC} says he understands. He mostly does.' } ] },
+  { id: 'o_contractyear', lvl: 'nfl', minAge: 24, cond: c => c.nfl && c.nfl.contract && c.nfl.contract.left === 1, title: 'THE CONTRACT YEAR', text: 'One year left on your deal. Your agent wants you to skip the voluntary workouts until the team talks about an extension. Your teammates are already at the facility.', opts: [
+    { label: 'Hold out. Make them call', risk: { p: 0.5, good: { fx: { hype: 5, cash: 500000, coach: -3 }, res: 'They call. A signing bonus shows up before camp. The fans call it smart business.' }, bad: { fx: { coach: -8, team: -4 }, res: 'They do not call. You show up in August out of shape and out of favor.' } } },
+    { label: 'Show up and bet on yourself', fx: { coach: 5, team: 4, hype: -2 }, res: 'You are the first car in the lot every morning. Your agent stops returning your texts for a week.' },
+    { label: 'Show up, but only for the throwing', fx: { team: 3, pts: { acc: 3 }, coach: -2 }, res: 'You throw with the receivers and skip the meetings. The coach notices which part you skipped.' } ] },
+  { id: 'o_farewell', lvl: 'nfl', minAge: 35, memOnce: true, title: 'ONE LAST RIDE?', text: 'Everybody is asking: is this the last season? A network wants to follow you all year for a farewell documentary.', opts: [
+    { label: 'Announce it. Farewell tour', fx: { fans: 10, hype: 6, coach: -3 }, mflag: 'farewell', res: 'Every road stadium gives you a gift. You now own four rocking chairs and a canoe.' },
+    { label: '"I will know when I know."', fx: { coach: 3, hype: -2 }, res: 'The talk shows hate the answer. Your coach loves it.' },
+    { label: 'Tell them you are going to play until 45', fx: { hype: 4, team: -3, pts: { legs: 3 } }, res: 'You hire a sleep coach, a chef and a guy who only does ankles. The young guys think you are a robot.' } ] },
 ];
 // the kid scene: three names, each a different line
 function offKidOpts(c) {
@@ -12891,7 +13064,7 @@ function offFxStr(fx, c) {
   if (fx.hype) out.push((fx.hype > 0 ? '+' : '') + fx.hype + (c.level === 'nfl' ? ' HYPE' : ' BUZZ'));
   if (fx.cash) out.push((fx.cash > 0 ? '+' : '-') + fmtMoney(Math.abs(fx.cash)));
   if (fx.xp) out.push((fx.xp > 0 ? '+' : '') + fx.xp + ' XP');
-  for (const k in fx.pts || {}) out.push((fx.pts[k] > 0 ? '+' : '-') + hsPts(Math.abs(fx.pts[k])) + ' ' + SKILL_INFO[k].name);
+  for (const k in fx.pts || {}) out.push((fx.pts[k] > 0 ? '+' : '-') + hsPts(Math.abs(fx.pts[k])) + ' ' + SKILL_INFO[k].name + ' XP');   // v112: progress, not stars
   return out.length ? ' ' + out.join('. ') + '.' : '';
 }
 function offPick(i) {
@@ -13029,6 +13202,9 @@ function micBox(c, p) {
   const tok = { INT: String(p.stats.int || 0), TD: String((p.hl && p.hl.tdPass) || 0) }, q = hsFill(M.q, c, tok);
   const box = el('div', { class: 'week mic' }, el('p', { class: 'story' }, el('b', { class: 'mich' }, p.mic ? 'THE PODIUM: ' : 'THE PODIUM (OPTIONAL): '), q));   // v108: one line, so the post screen fits
   if (p.mic) { const o = M.opts[p.mic.i]; box.append(el('div', { class: 'goal' }, el('small', {}, 'YOU SAID: ' + hsFill(o.label, c).toUpperCase()), el('b', {}, evStyle() === 'classic' ? fxColor(p.mic.res) : evPlain(p.mic.res)))); }
+  else if (!p.micOpen) {   // v112 panel (the result screen did too much at once): the podium waits behind one tap
+    box.replaceChildren(el('button', { class: 'btn small micopen', onclick: () => { audioInit(); sfx('select'); p.micOpen = true; uiShow('post'); } }, '\u{1F3A4} THE PODIUM (OPTIONAL): A REPORTER HAS A QUESTION'));
+  }
   else box.append(el('div', { class: 'cards1 mics' }, ...M.opts.map((o, i) => el('button', { class: 'card', onclick: () => { audioInit(); sfx('select'); micPick(c, p, i); uiShow('post'); } }, el('b', {}, hsFill(o.label, c))))));
   return box;
 }
