@@ -735,7 +735,7 @@ function offTeam() { return CFG.teams[MATCHUP[0]] || CFG.teams.DEN; }
 // the QB on the field: [name, arm, accuracy, legs (run speed), vision]. A career QB from the match setup (RBMatch.start)
 // replaces the team's own QB. Team QBs have no vision rating, so their vision is their accuracy (the arc behaves as before)
 const MATCH = { setup: null, onEnd: null, last: null };
-const GAME_VERSION = 'v113';   // shown on the title and pause screens and in the playtest log, so a cached old copy is easy to spot
+const GAME_VERSION = 'v114';   // shown on the title and pause screens and in the playtest log, so a cached old copy is easy to spot
 function qbR() {
   const q = MATCH.setup && MATCH.setup.qb, t = offTeam().qb;
   if (!q) return t;
@@ -870,7 +870,6 @@ let B = WB;                                  // current draw target: world buffe
 const hud = document.createElement('canvas');
 const HB = hud.getContext('2d');
 let DPR = 1, S = 4, BW = 234, BH = 500, CSSW = 390, CSSH = 844;
-let TOPB = 42, BOTB = 52, WBOT = 0;   // v113 (harrison: no UI over the field on any phone or iPad): HUD bands above and below the field view (HUD px)
 let ST = 0, SB = 0, STAD = 64, VIEW_T = 64, VIEW_H = 400, PPY = 12, FX0 = 5;
 let WW = 220, WVH = 480, WS = 5;
 // v72 camera lab: SIDE = the portrait game canvas is turned 90 degrees on a landscape screen (field runs left to right) and the
@@ -897,13 +896,12 @@ function layout() {
   const sa = getComputedStyle(document.getElementById('sa'));
   ST = Math.ceil(parseFloat(sa.paddingTop || 0) * DPR / S);
   SB = Math.ceil(parseFloat(sa.paddingBottom || 0) * DPR / S);
-  TOPB = SIDE ? 0 : 42; BOTB = SIDE ? 0 : 52;
-  STAD = ST + 13 + TOPB;   // v113: the score bar and the situation band sit above the field
-  VIEW_T = STAD; VIEW_H = BH - SB - STAD - BOTB; WT = SIDE ? 0 : Math.round(VIEW_T * S); WBOT = SIDE ? 0 : devH - Math.round((BH - SB - BOTB) * S);
+  STAD = ST + 13;   // only the score bar sits above the field
+  VIEW_T = STAD; VIEW_H = BH - SB - STAD; WT = SIDE ? 0 : Math.round(VIEW_T * S);
   // World layer (bible §2): sprites at integer art pixels, players ~1.6yd tall, camera zoom continuous.
   // [P] the full 17.2yd width plus a sideline strip spans the screen; taller screens show more length (>= 31yd)
   PPY = Math.round(CFG.spriteArtPxTall / CFG.playerHeightYd);
-  const vw = devW, vh = devH - WT - WBOT;
+  const vw = devW, vh = devH - WT;
   const visW = CFG.tiltFitField ? FIELD_W + 2 * CFG.fieldMarginYd : Math.max(FIELD_W + 2 * CFG.fieldMarginYd, CFG.cameraPassVisibleWidthYd * vw / vh);
   WW = Math.ceil(visW * PPY); WS = vw / WW; TDF = CFG.camTilt > 0 ? Math.max(1, Math.min(CFG.tiltIsoAtV > 0 ? 1 / (CFG.tiltIsoAtV * tiltSlope(CFG.tiltWidthAtV)) : 1 + (CFG.tiltDepth || 0), CFG.tiltMaxDepthYd / (vh / WS / PPY))) : 1; WVH = Math.ceil(vh / WS * TDF);
   buf.width = WW; buf.height = WVH;
@@ -2798,14 +2796,16 @@ function skipRun() {
 function runCardDone() { G.runCard = null; sfx('select'); if (autoRunCalled()) skipRun(); }
 function drawRunCard() {
   const r = G.runCard; if (!r || G.phase !== 'presnap') return;
-  // v113: drawn in the bottom band, never over the field
-  const y = botTop(), col = r.g >= 10 ? '#5fd66a' : r.g <= 0 ? '#ff8a7a' : '#ffffff', T1 = TEAMS[MATCHUP[0]];
-  B.fillStyle = T1[2]; B.fillRect(0, y + 1, BW, 12);
-  drawTxt(B, 'RUN: ' + r.n + (r.rb ? '  ' + r.rb : ''), BW / 2, y + 3, '#ffffff', { align: 'c' });
+  const w = Math.min(BW - 40, 200), h = 74, x = Math.round((BW - w) / 2), y = Math.round(VIEW_T + VIEW_H * 0.36);
+  const col = r.g >= 10 ? '#5fd66a' : r.g <= 0 ? '#ff8a7a' : '#ffffff', T1 = TEAMS[MATCHUP[0]];
+  B.fillStyle = 'rgba(5,6,12,0.92)'; B.fillRect(x, y, w, h);
+  B.fillStyle = T1[2]; B.fillRect(x, y, w, 14);
+  drawTxt(B, 'RUN: ' + r.n, BW / 2, y + 4, '#ffffff', { align: 'c' });
+  drawTxt(B, r.rb || '', BW / 2, y + 19, '#9aa0c8', { align: 'c', bold: false });
+  drawTxt(B, (r.g > 0 ? '+' : '') + r.g + ' YDS', BW / 2, y + 30, col, { align: 'c', sc: 2, oc: '#000' });
   const dn = G.choice === 'fourth' ? '4TH DOWN' : r.first ? '1ST DOWN!' : ['', '1ST', '2ND', '3RD', '4TH'][G.down] + ' & ' + (G.los + G.togo >= 100 ? 'GOAL' : Math.max(1, Math.round(G.togo)));
-  drawTxt(B, (r.g > 0 ? '+' : '') + r.g + ' YDS', 8, y + 17, col, { sc: 2, oc: '#000' });
-  drawTxt(B, dn, BW - 8, y + 17, r.first ? '#5fd66a' : '#ffd23a', { align: 'r' });
-  if (r.t > 0.35) drawTxt(B, 'TAP FOR NEXT PLAY', BW / 2, y + 38, ((G.t * 2) | 0) % 2 ? '#ffffff' : '#9aa0c8', { align: 'c', oc: '#000' });
+  drawTxt(B, dn, BW / 2, y + 52, r.first ? '#5fd66a' : '#ffd23a', { align: 'c' });
+  if (r.t > 0.35) drawTxt(B, 'TAP FOR NEXT PLAY', BW / 2, y + h + 6, ((G.t * 2) | 0) % 2 ? '#ffffff' : '#9aa0c8', { align: 'c', oc: '#000' });
 }
 function autoRun() {
   const r = G.off.R, g = runGain();
@@ -3727,7 +3727,7 @@ function gbAdd(k) {
   const was = G.gbMeter || 0; G.gbMeter = Math.min(100, was + (CFG.gbFill[k] || 0));
   if (was < 100 && G.gbMeter >= 100) { jumbo('GAMEBREAKER READY', 2); ev('gbReady', {}); }
 }
-function gbBox() { return { x: BW - 78, y: ST + 13 + 23, w: 74, h: 17 }; }   // v113: top band, second row
+function gbBox() { return { x: BW - 78, y: BH - SB - 30, w: 74, h: 24 }; }
 function canGamebreak() { return CFG.gamebreaker && juiceOn() && (G.gbMeter || 0) >= 100 && !G.gb && G.phase === 'presnap' && !G.choice && !G.kick && !G.twoPt; }
 function gamebreak() {
   G.gb = true; G.gbMeter = 0; G.gbUsed = (G.gbUsed || 0) + 1;
@@ -3741,12 +3741,12 @@ function drawJuice() {
   if (CFG.gamebreaker && (G.phase === 'presnap' || G.phase === 'live' || G.phase === 'dead')) {
     B.fillStyle = 'rgba(8,10,22,0.82)'; B.fillRect(b.x, b.y, b.w, b.h);
     B.fillStyle = G.gb ? '#ff8a1a' : ready ? (flash ? '#ffd23a' : '#ff8a1a') : '#555a72'; B.fillRect(b.x, b.y, b.w, 1);
-    drawTxt(B, G.gb ? 'GAMEBREAKER ON' : ready ? 'GAMEBREAKER!' : 'GAMEBREAKER', b.x + b.w / 2, b.y + 2, G.gb || ready ? '#ffffff' : '#7a7f98', { align: 'c', bold: false });
-    B.fillStyle = '#2a2f48'; B.fillRect(b.x + 6, b.y + 12, b.w - 12, 3);
-    B.fillStyle = G.gb ? '#ff8a1a' : ready ? '#ffd23a' : '#9aa0c8'; B.fillRect(b.x + 6, b.y + 12, Math.round((b.w - 12) * (G.gb ? 1 : m / 100)), 3);
+    drawTxt(B, G.gb ? 'GAMEBREAKER ON' : ready ? 'GAMEBREAKER!' : 'GAMEBREAKER', b.x + b.w / 2, b.y + 4, G.gb || ready ? '#ffffff' : '#7a7f98', { align: 'c', bold: false });
+    B.fillStyle = '#2a2f48'; B.fillRect(b.x + 6, b.y + 15, b.w - 12, 4);
+    B.fillStyle = G.gb ? '#ff8a1a' : ready ? '#ffd23a' : '#9aa0c8'; B.fillRect(b.x + 6, b.y + 15, Math.round((b.w - 12) * (G.gb ? 1 : m / 100)), 4);
   }
   if (G.onFire && G.phase !== 'over') {
-    const t = txt('ON FIRE', flash ? '#ffe14a' : '#ff8a1a', 1, '#5a0a00'); B.drawImage(t, BW - 4 - t.width - (CFG.gamebreaker ? 80 : 0), ST + 13 + 25);   // v113: top band, beside the gamebreaker meter
+    const t = txt('ON FIRE', flash ? '#ffe14a' : '#ff8a1a', 1, '#5a0a00'); B.drawImage(t, BW - t.width - 6, VIEW_T + (G.phase === 'presnap' ? 84 : 6));   // below the presnap panel
   }   // no streak counter: harrison 2026-10-23, the trail colors show it
 }
 // pocket clock (Team meter made visible): a ring at the QB's feet that empties until the first rusher is due to break free
@@ -4007,11 +4007,11 @@ function windShift(dist, scale) {
 }
 // clip buttons: Change Play (re-roll the coach's call before the snap), Stop Clock (a timeout while the clock runs)
 function changePlayBox() { return { x: 4, y: VIEW_T + 4, w: 74, h: 20 }; }
-function stopClockBox() { return { x: BW - 78, y: ST + 15, w: 74, h: 20 }; }   // v113: in the top band
+function stopClockBox() { return { x: 4, y: VIEW_T + 28, w: 74, h: 20 }; }
 // harrison 2026-10-24 (lab playtest: "no way to save time late"): the last 2 minutes of each half are a two-minute drill.
 // The offense goes no-huddle (the clock between plays runs at hurryClockScale) and a SPIKE button stops the clock for a down.
 // With the lab's short quarters the window shrinks with the quarter (two thirds of it)
-function spikeBox() { return { x: BW - 156, y: ST + 15, w: 74, h: 20 }; }
+function spikeBox() { return { x: 4, y: VIEW_T + 52, w: 74, h: 20 }; }
 function twoMinute() { return !G.drill && (G.q === 2 || G.q === 4) && G.clock > 0 && G.clock <= Math.min(CFG.twoMinuteS, CFG.quarterLengthS * 2 / 3); }
 // the offense hurries before halftime, and late in the game unless it is ahead (then it runs the clock down)
 function hurryUp() { return twoMinute() && (G.q === 2 || G.score[0] <= G.score[1]); }
@@ -4049,13 +4049,14 @@ function drawClipButtons() {
   if (canSpike()) btn(spikeBox(), 'SPIKE IT', 0, 0, true);
   // wind on kicks and the 4th-down call (clip: "Wind 7" with an arrow)
   if (G.phase === 'presnap' && (G.kick || G.choice) && G.wind) {
-    const x = 4, y = ST + 13 + 24, w = G.wind;   // v113: second row of the top band
+    const x = BW - 40, y = VIEW_T + 6, w = G.wind;
+    B.fillStyle = 'rgba(8,10,22,0.82)'; B.fillRect(x - 4, y, 40, 30);
     if (w.mph > 0) {
-      const ux = w.x / w.mph * 0.6, uy = -w.y / w.mph * 0.6, cx = x + 10, cy = y + 7;   // screen: downfield is up
+      const ux = w.x / w.mph, uy = -w.y / w.mph, cx = x + 16, cy = y + 11;   // screen: downfield is up
       for (let i = -6; i <= 6; i++) { B.fillStyle = '#ffffff'; B.fillRect(Math.round(cx + ux * i), Math.round(cy + uy * i), 2, 2); }
       for (const s of [-1, 1]) for (let i = 1; i <= 3; i++) { B.fillStyle = '#ffffff'; B.fillRect(Math.round(cx + ux * (6 - i) + s * uy * i), Math.round(cy + uy * (6 - i) - s * ux * i), 2, 2); }
     }
-    drawTxt(B, 'WIND ' + w.mph + ' MPH', x + 22, y + 3, '#ffd23a', { bold: false });
+    drawTxt(B, 'WIND ' + w.mph, x + 16, y + 20, '#ffd23a', { align: 'c', bold: false });
   }
 }
 
@@ -4518,9 +4519,9 @@ function camTarget() {
     else if (G.mode === 'punt') tgt = TL ? tiltRowCam(G.los, 0.6) : G.los + 2;
     else {
       // keep the QB/RB clear of the play-call strip, framed for where the QB will be after his drop
-      const panelTop = VIEW_T + VIEW_H;   // v113: the play cards live in the bottom band, under the field
+      const panelTop = cards.length ? cards[0].y - 22 : BH - SB;
       const panelRow = (panelTop * S - VIEW_T * S) / WS;
-      const tRow = CFG.camTilt > 0 ? tiltU(clamp((panelTop - VIEW_T) * S / tiltHs(), 0, 1)) * WVH : panelRow;   // v82: the leaned view maps screen rows to field rows non-linearly
+      const tRow = CFG.camTilt > 0 ? tiltU(clamp((panelTop - VIEW_T) * S / (cv.height - WT), 0, 1)) * WVH : panelRow;   // v82: the leaned view maps screen rows to field rows non-linearly
       const need = SIDE || CFG.qbEyeZoom > 1 ? Infinity : (G.los - 7.6) + (tRow - WVH / 2) / PPY;   // sideways the cards sit beside the field, not over the backfield
       tgt = Math.min(pocketCam(G.los - CFG.qbSetbackFromLosYd - (G.play && G.play.run ? 2.2 : CFG.qbDropbackYd)), need);
     }
@@ -4612,7 +4613,7 @@ function tiltV(u) { const sT = 1 - CFG.camTilt; return (1 / (1 / sT - u * (1 / s
 // v80: on-screen width of row v, 1 at CFG.tiltWidthAtV. The flat world (Hf = c.ch * c.k tall, taller than the screen with
 // CFG.tiltDepth) is squeezed into the screen's field view (Hs)
 const tiltW = v => tiltS(v) / tiltS(CFG.tiltWidthAtV);
-const tiltHs = () => cv.height - WT - WBOT;
+const tiltHs = () => cv.height - WT;
 function tiltFwd(d) {   // flat device px -> leaned device px
   if (!(CFG.camTilt > 0)) return d;
   const c = viewCrop(), Y0 = WT, Hf = c.ch * c.k, u = (d.y - Y0) / Hf;
@@ -4627,7 +4628,7 @@ function tiltInv(dx, dy) {
 }
 function tiltBlit(c) {
   const Y0 = WT, H = tiltHs(), bh = Math.max(1, Math.round(2 * DPR)),   // v82: 2-css-px strips, half the draw calls; the width step per strip is under a pixel
-        Yend = Math.min(cv.height - WBOT, Y0 + H);
+        Yend = Math.min(cv.height, Y0 + H);
   M.fillStyle = '#3f5733'; M.fillRect(0, Y0, cv.width, Yend - Y0);   // sideline grass past the edge of the world buffer
   for (let y = Y0; y < Yend; y += bh) {
     const v0 = (y - Y0) / H, v1 = Math.min(1, (y + bh - Y0) / H), s = tiltW((v0 + v1) / 2), u0 = tiltU(v0), u1 = tiltU(v1);
@@ -4741,8 +4742,8 @@ function toLocal(e) {
   const r = cv.getBoundingClientRect(); return { lx: (e.clientX - r.left) * BW / r.width, ly: (e.clientY - r.top) * BH / r.height, cx: e.clientX, cy: e.clientY, dx: (e.clientX - r.left) * cv.width / r.width, dy: (e.clientY - r.top) * cv.height / r.height }; }
 let cards = [];
 function layoutCards() {
-  const n = 4, gap = 4, cw = Math.floor((BW - gap * (n + 1)) / n), ch = 34;
-  const y = BH - SB - ch - 4;   // v113: inside the bottom band
+  const n = 4, gap = 4, cw = Math.floor((BW - gap * (n + 1)) / n), ch = 40;
+  const y = BH - SB - ch - 6;
   cards = []; for (let i = 0; i < n; i++) cards.push({ x: gap + i * (cw + gap), y, w: cw, h: ch });
 }
 // 4th-down / PAT choice buttons share the play-card strip
@@ -5487,15 +5488,16 @@ function drawCards() {
   if (G.phase !== 'presnap' || (G.drill && DRILLS[G.drill.k].keep)) return;   // no play card in the no-defense drills
   const c0 = cards[0];
   if (G.choice) {
-    if (G.runCard) return;   // v113: the run result shares the band; the choice shows after the tap
+    B.fillStyle = 'rgba(8,10,22,0.8)'; B.fillRect(0, c0.y - 18, BW, BH - c0.y + 18);
+    B.fillStyle = '#ffd23a'; B.fillRect(0, c0.y - 19, BW, 1);
     const cc = G.coachCall;
-    drawTxt(B, cc ? "COACH'S CALL" : G.choice === 'fourth' ? '4TH DOWN - YOUR CALL' : 'POINT AFTER TOUCHDOWN', BW / 2, botTop() + 3, '#ffd23a', { align: 'c' });
+    drawTxt(B, cc ? "COACH'S CALL" : G.choice === 'fourth' ? '4TH DOWN - YOUR CALL' : 'POINT AFTER TOUCHDOWN', BW / 2, c0.y - 13, '#ffd23a', { align: 'c' });
     for (const b of choiceButtons()) {
       if (cc && b.id !== cc.opt) B.globalAlpha = 0.3;
       B.fillStyle = cc && b.id === cc.opt ? '#6a5a10' : '#1d2a1a'; B.fillRect(b.x, b.y, b.w, b.h); B.fillStyle = cc && b.id === cc.opt ? '#9a7f14' : '#2f4a2a'; B.fillRect(b.x + 2, b.y + 2, b.w - 4, b.h - 4);
       B.fillStyle = '#ffd23a'; B.fillRect(b.x, b.y, b.w, 1); B.fillRect(b.x, b.y + b.h - 1, b.w, 1);
-      drawTxt(B, b.label, b.x + b.w / 2, b.y + 8, '#ffffff', { align: 'c' });
-      if (b.sub) drawTxt(B, b.sub, b.x + b.w / 2, b.y + 21, '#9fc28a', { align: 'c', bold: false });
+      drawTxt(B, b.label, b.x + b.w / 2, b.y + 11, '#ffffff', { align: 'c' });
+      if (b.sub) drawTxt(B, b.sub, b.x + b.w / 2, b.y + 24, '#9fc28a', { align: 'c', bold: false });
       B.globalAlpha = 1;
     }
     return;
@@ -5504,12 +5506,13 @@ function drawCards() {
   if (CFG.coachCalls && !G.picking) {
     // coach's call plate: the play name; the routes themselves are drawn on the field until the snap
     const c = G.cards[0], t = txt(c.n, '#ffd23a', 1, '#151515'), l = txt("COACH'S CALL - " + (c.f || 'GUN') + (c.k === 'pa' ? ' PLAY ACTION' : c.k === 'run' ? ' RUN' : ''), '#ffffff', 1, null, false);
-    if (tutTip() || G.runCard) return;   // v113: the coach's tip or the run result uses the band
-    const w = Math.max(t.width, l.width) + 12, x = Math.round(BW / 2 - w / 2), y = botTop() + 18;
+    const w = Math.max(t.width, l.width) + 12, x = Math.round(BW / 2 - w / 2), y = BH - SB - 50;
     B.fillStyle = 'rgba(8,10,22,0.82)'; B.fillRect(x, y, w, 24); B.fillStyle = '#ffd23a'; B.fillRect(x, y, w, 1); B.fillRect(x, y + 23, w, 1);
     B.drawImage(l, Math.round(BW / 2 - l.width / 2), y + 3); B.drawImage(t, Math.round(BW / 2 - t.width / 2), y + 13);
     return;
   }
+  B.fillStyle = 'rgba(8,10,22,0.8)'; B.fillRect(0, c0.y - 18, BW, BH - c0.y + 18);
+  B.fillStyle = '#ffd23a'; B.fillRect(0, c0.y - 19, BW, 1);
   for (let i = 0; i < G.cards.length && i < cards.length; i++) {
     const b = cards[i], c = G.cards[i];
     B.drawImage(cardCanvas(c, b.w, b.h), b.x, b.y);
@@ -5518,35 +5521,36 @@ function drawCards() {
 }
 // harrison 2026-10-23: a clearer situation panel before every snap: big down and distance, where the ball is, and the
 // last run (a called run is skipped) as a card with the gain in big type; earlier runs this series as small lines
-function botTop() { return BH - SB - BOTB; }
-// v113 (harrison: no UI over the field): solid bands above and below the field view hold every panel and button
-function drawBands() {
-  if (SIDE || G.phase === 'select') return;
-  const t0 = ST + 12, bt = botTop();
-  B.fillStyle = '#0b0d1c'; B.fillRect(0, t0, BW, TOPB + 1); B.fillRect(0, bt, BW, BH - bt);
-  B.fillStyle = '#2a2f48'; B.fillRect(0, t0 + TOPB, BW, 1); B.fillRect(0, bt, BW, 1);
-}
 function drawRunLog() {
-  if (SIDE || G.phase === 'select' || G.phase === 'over' || G.drill) return;
-  // v113: the situation panel is the top band: down and distance, the spot, then the last run underneath
-  const x0 = 4, w = BW - 8 - (canStopClock() ? 80 : 0) - (canSpike() ? 78 : 0); let y = ST + 14;
-  if (G.mode === 'xp' || G.choice === 'pat') { drawTxt(B, 'POINT AFTER', x0 + 4, y + 4, '#ffd23a', { sc: 2, oc: '#000' }); return; }
+  if (G.phase !== 'presnap' || G.drill || G.mode === 'xp' || G.kick || G.choice === 'pat') return;   // v84: no '1ST & 10' over the point-after choice
+  const x0 = 82, w = BW - 86; let y = VIEW_T + 4;   // right of the Change Play / Stop Clock buttons
   const goal = G.los + G.togo >= 100, dd = ordinal(Math.min(G.down, 4)) + ' & ' + (goal ? 'GOAL' : Math.max(1, Math.round(G.togo)));
   const spot = G.los < 50 ? 'OWN ' + Math.round(G.los) : G.los > 50 ? 'OPP ' + Math.round(100 - G.los) : 'MIDFIELD';
-  B.fillStyle = G.down >= 3 ? '#ff8a1a' : '#e8b31e'; B.fillRect(x0, y, 3, 20);
+  B.fillStyle = 'rgba(8,10,22,0.85)'; B.fillRect(x0, y, w, 22);
+  B.fillStyle = G.down >= 3 ? '#ff8a1a' : '#e8b31e'; B.fillRect(x0, y, 3, 22);
   drawTxt(B, dd, x0 + 8, y + 4, G.down >= 3 ? '#ffb36a' : '#ffd23a', { sc: 2, oc: '#000' });
   drawTxt(B, 'BALL ON', x0 + w - 4, y + 3, '#9aa0c8', { align: 'r', bold: false });
   drawTxt(B, spot, x0 + w - 4, y + 12, '#ffffff', { align: 'r' });
-  y += 24;
-  const L = G.runLog; if (!L || !L.length || G.phase !== 'presnap' || ((G.kick || G.choice) && G.wind)) return;
-  const r = L[L.length - 1], col = r.td || r.g >= 10 ? '#5fd66a' : r.g <= 0 ? '#ff8a7a' : '#cfd3e8';
-  drawTxt(B, 'LAST RUN ' + (r.td ? 'TD!' : (r.g > 0 ? '+' : '') + r.g + ' YDS') + (r.first && !r.td ? ', 1ST DOWN' : ''), x0 + 6, y + 2, col, { bold: false });
+  y += 25;
+  const L = G.runLog; if (!L || !L.length) return;
+  const r = L[L.length - 1], col = r.td || r.g >= 10 ? '#5fd66a' : r.g <= 0 ? '#ff8a7a' : '#ffffff';
+  B.fillStyle = 'rgba(8,10,22,0.85)'; B.fillRect(x0, y, w, 24);
+  B.fillStyle = '#5a8cff'; B.fillRect(x0, y, 3, 24);
+  drawTxt(B, 'LAST PLAY: RUN', x0 + 8, y + 3, '#9fc0ff', { bold: false });
+  drawTxt(B, (r.rb || r.n) + (r.rb ? ' - ' + r.n : ''), x0 + 8, y + 13, '#ffffff', { bold: false });
+  drawTxt(B, r.td ? 'TD!' : (r.g > 0 ? '+' : '') + r.g + ' YDS', x0 + w - 4, y + 3, col, { align: 'r', sc: 2, oc: '#000' });
+  if (r.first && !r.td) drawTxt(B, '1ST DOWN', x0 + w - 4, y + 16, '#5fd66a', { align: 'r', bold: false });
+  y += 26;
+  for (const o of L.slice(0, -1).reverse()) {   // the runs before it this series
+    const t = txt('RUN ' + (o.g > 0 ? '+' : '') + o.g + (o.first ? ' 1ST' : ''), '#cfd3e8', 1, null, false);
+    B.fillStyle = 'rgba(8,10,22,0.7)'; B.fillRect(x0, y, t.width + 8, 10); B.drawImage(t, x0 + 4, y + 2); y += 11;
+  }
 }
 // two-tap kick meter: power bar fills and empties, then the aim needle sweeps
 function drawKickMeter() {
   const k = G.kick; if (!k || G.phase !== 'presnap' || k.auto !== undefined) return;
   const v = kickMeterVals(k), power = k.stage === 0 ? v.power : k.power, aim = k.stage === 1 ? v.aim : k.aim;
-  const x = BW - 22, h = 90, y = botTop() - h - 4;
+  const x = BW - 22, h = 90, y = BH - SB - h - 40;
   B.fillStyle = 'rgba(5,6,12,0.85)'; B.fillRect(x - 3, y - 3, 14, h + 6);
   for (let i = 0; i < h; i++) { const f = 1 - i / h; B.fillStyle = f > 0.85 ? '#e23b2e' : f > 0.6 ? '#ffd23a' : '#5fd66a'; if (f <= power) B.fillRect(x, y + i, 8, 1); }
   B.fillStyle = '#ffffff'; B.fillRect(x - 2, y + Math.round((1 - power) * h), 12, 1);
@@ -5557,18 +5561,18 @@ function drawKickMeter() {
   }
 }
 function drawHints() {
-  const bt = botTop(); let s = null, y = bt + 4;   // v113: hints live in the bottom band
+  let s = null, y = cards.length ? cards[0].y - 14 : BH - SB - 62;
   if (G.phase === 'presnap') {
     if (G.choice || G.runCard) s = null;
-    else if (G.kick) { s = G.kick.auto !== undefined ? (G.mode === 'punt' ? 'THE PUNTER' : 'THE KICKER') + ' LINES IT UP' : G.kick.stage === 0 ? 'TAP TO SET POWER' : 'TAP TO SET AIM'; y = bt + 20; }
-    else { const h = G.drill ? DRILLS[G.drill.k].hint : G.picking ? 'PICK A PLAY - DRAG UP TO SNAP' : G.play && G.play.run ? 'TAP FIELD TO SNAP' : (SIDE ? 'DRAG RIGHT TO SNAP AND THROW' : 'DRAG UP TO SNAP AND THROW'); s = G.hints.snap || ((G.t * 1.5) | 0) % 2 ? h : null; }
+    else if (G.kick) { s = G.kick.auto !== undefined ? (G.mode === 'punt' ? 'THE PUNTER' : 'THE KICKER') + ' LINES IT UP' : G.kick.stage === 0 ? 'TAP TO SET POWER' : 'TAP TO SET AIM'; y = BH - SB - 22; }
+    else { const h = G.drill ? DRILLS[G.drill.k].hint : G.picking ? 'YOUR CALL: TAP A PLAY - THEN DRAG UP TO SNAP' : G.play && G.play.run ? 'TAP FIELD TO SNAP' : (SIDE ? 'DRAG RIGHT TO SNAP AND THROW' : 'DRAG UP TO SNAP AND THROW'); s = G.hints.snap || ((G.t * 1.5) | 0) % 2 ? h : null; }
   } else if (G.phase === 'live') {
     if (G.sub === 'pocket' && G.hints.aim && !G.aim) s = (SIDE ? 'DRAG RIGHT' : 'DRAG UP') + ' TOWARD A RECEIVER - TAP RB TO HAND OFF';
     else if (G.sub === 'pocket' && G.aim && G.hints.aim && G.aim.show) s = 'RELEASE TO THROW - 2ND FINGER: BULLET';
     else if (G.sub === 'run' && G.hints.run && G.ctrl && G.ctrl.isRunner && !cpuCarrier(G.ctrl)) s = 'SWIPE < > TO JUKE - UP TO DIVE - DOWN TO STOP';
-    y = bt + 22;
+    y = BH - SB - 22;
   } else if (G.phase === 'dead' && G.deadT > 0.6) { s = null; }
-  if (!s || tutTip()) return;
+  if (!s) return;
   // never let a hint run off the screen: wrap at the " - " separators until each line fits
   let lines = [s];
   if (txt(s, '#ffffff', 1, '#151515').width > BW - 8) {
@@ -5580,13 +5584,13 @@ function drawHints() {
   }
   for (let i = 0; i < lines.length; i++) {
     const t = txt(lines[i], '#ffffff', 1, '#151515');
-    const ly = G.phase === 'presnap' && !G.kick ? y + i * 10 : y - (lines.length - 1 - i) * 10;
+    const ly = y - (lines.length - 1 - i) * 10;
     B.fillStyle = 'rgba(12,16,10,0.55)'; B.fillRect(Math.round(BW / 2 - t.width / 2) - 2, ly - 1, t.width + 4, t.height + 2);
     B.drawImage(t, Math.round(BW / 2 - t.width / 2), ly);
   }
 }
 // ---- v112 panel: the first HS game is the tutorial (career.js tutorialOn sets setup.tutorial). The coach talks you through
-// the controls on the first plays in the bottom band (v113: no bullet time). Nothing ever stops the game.
+// the controls on the first plays (v113: no bullet time, harrison). Nothing ever stops the game.
 const TUT_SLOW = 0.5, TUT_SLOW_PASSES = 4;
 function tutOn() { return !!(MATCH.setup && MATCH.setup.tutorial) && !G.drill && !practice(); }
 function tutState() { return G.tut || (G.tut = { pass: 0, run: 0, catches: 0, ints: 0, scr: 0, flash: null }); }
@@ -5595,7 +5599,7 @@ function tutEv(e) {
   if (!G || !tutOn()) return; const T = tutState();
   if (e.type === 'snap' && !e.kick) { if (G.play && G.play.run) T.run++; else T.pass++; }
   else if (e.type === 'catch' && G.sub !== 'run' && ++T.catches === 1) tutFlash('NICE THROW', ['THAT IS THE WHOLE GAME: FIND SPACE, LEAD HIM, LET IT GO.']);
-  else if (e.type === 'int' && ++T.ints <= 2) tutFlash('PICKED OFF', ['A DEFENDER WAS CLOSER TO THE BALL THAN YOUR MAN.', 'THROW SOONER, OR FIND MORE ROOM.'], 4.5);
+  else if (e.type === 'int' && ++T.ints <= 2) tutFlash('PICKED OFF', ['A DEFENDER WAS CLOSER TO THE BALL THAN YOUR MAN.', 'THROW SOONER, OR PICK A RECEIVER WITH MORE ROOM.'], 4.5);
   else if (e.type === 'scramble') T.scr++;
 }
 function tutTip() {
@@ -5603,16 +5607,16 @@ function tutTip() {
   const T = tutState();
   if (T.flash && SIMT < T.flash.until) return T.flash;
   if (G.phase === 'presnap') {
-    if (G.choice || G.kick || G.runCard || G.picking) return null;
-    if (G.play && G.play.run) return T.run === 0 ? { title: 'RUN PLAY', lines: ['TAP THE FIELD TO SNAP.', 'YOUR RUNNING BACK TAKES IT FROM THERE.'] } : null;
-    if (T.pass === 0) return { title: 'THE SNAP', lines: ['THE GREEN LINES ARE THE ROUTES.', 'DRAG UP TO SNAP. KEEP DRAGGING TO AIM.'] };
-    if (T.pass === 2) return { title: 'BULLET OR LOB', lines: ['A NORMAL THROW IS A LOB OVER DEFENDERS.', 'TAP A 2ND FINGER WHILE AIMING FOR A FAST, FLAT BULLET.'] };
-    if (T.pass === 3) return { title: 'PRESSURE', lines: ['THE POCKET HOLDS FOR A COUPLE OF SECONDS.', 'NOBODY OPEN? DRAG DOWN TO SCRAMBLE.'] };
+    if (G.choice || G.kick || G.runCard) return null;
+    if (G.play && G.play.run) return T.run === 0 ? { title: 'RUN PLAY', lines: ['COACH CALLED A RUN. TAP THE FIELD TO SNAP.', 'YOUR RUNNING BACK TAKES IT FROM THERE.'] } : null;
+    if (T.pass === 0) return { title: 'THE SNAP', lines: ["THE GREEN LINES ARE YOUR RECEIVERS' ROUTES.", 'PUT YOUR THUMB ON THE FIELD AND DRAG UP TO SNAP. KEEP IT DOWN: THE SAME DRAG BECOMES YOUR AIM.'] };
+    if (T.pass === 2) return { title: 'BULLET OR LOB', lines: ['A NORMAL THROW IS A LOB THAT FLOATS OVER DEFENDERS.', 'WHILE AIMING, TAP A SECOND FINGER FOR A BULLET: FAST AND FLAT, BEST FOR SHORT THROWS.'] };
+    if (T.pass === 3) return { title: 'PRESSURE', lines: ['THE POCKET ONLY HOLDS FOR A COUPLE OF SECONDS.', 'NOBODY OPEN? DRAG DOWN TO SCRAMBLE.'] };
     return null;
   }
   if (G.phase === 'live') {
     if (G.sub === 'pocket' && ball.holder === G.qb && !(G.play && G.play.run) && T.pass <= 2)
-      return G.aim && G.aim.show ? { title: 'LEAD HIM', lines: ['THE BOX IS WHERE THE BALL LANDS.', 'PUT IT WHERE HE IS GOING, THEN LET GO.'] }
+      return G.aim && G.aim.show ? { title: 'LEAD HIM', lines: ["THE DOTS ARE THE BALL'S FLIGHT. THE BOX IS WHERE IT LANDS.", 'PUT THE BOX WHERE HE IS GOING, AWAY FROM DEFENDERS. LET GO TO THROW.'] }
         : { title: 'THE THROW', lines: ['DRAG TOWARD A RECEIVER WITH NO DEFENDER CLOSE.'] };
     if (G.sub === 'run' && G.ctrl && G.ctrl.isRunner && !cpuCarrier(G.ctrl) && T.scr <= 2) return { title: 'RUN WITH IT', lines: ['SWIPE LEFT OR RIGHT TO JUKE, UP TO DIVE, DOWN TO STOP.'] };
   }
@@ -5625,14 +5629,13 @@ function tutWrap(str, maxW) {
 }
 function drawTut() {
   const tip = tutTip(); if (!tip) return;
-  const pad = 4, maxW = BW - 8 - pad * 2, rows = [];
+  const pad = 5, maxW = BW - 12 - pad * 2, rows = [];
   for (const l of tip.lines) rows.push(...tutWrap(l, maxW));
-  rows.length = Math.min(rows.length, 3);   // v113: the tip lives in the bottom band (3 lines)
-  const x = 2, y = botTop() + 1, h = BOTB - 2, w = BW - 4;
+  const x = 6, y = VIEW_T + 34, h = 12 + rows.length * 10 + pad, w = BW - 12;
   B.fillStyle = 'rgba(10,8,26,0.86)'; B.fillRect(x, y, w, h);
   B.fillStyle = '#ffd23a'; B.fillRect(x, y, w, 1); B.fillRect(x, y + h - 1, w, 1); B.fillRect(x, y, 1, h); B.fillRect(x + w - 1, y, 1, h);
   drawTxt(B, "COACH: " + tip.title, x + pad, y + pad, '#ffd23a', { oc: '#000' });
-  rows.forEach((r, i) => drawTxt(B, r, x + pad, y + pad + 11 + i * 10, '#ffffff', { oc: '#151515', bold: false }));
+  rows.forEach((r, i) => drawTxt(B, r, x + pad, y + pad + 12 + i * 10, '#ffffff', { oc: '#151515', bold: false }));
 }
 function drawNameTag() {
   if (G.phase === 'sim' || G.phase === 'over' || (G.phase === 'presnap' && G.cards.length)) return;
@@ -5808,7 +5811,6 @@ function render() {
   B = HB; HB.clearRect(0, 0, BW, BH);
   if (G.phase !== 'replay' && G.phase !== 'sim') drawPops();
   drawScorebug();
-  drawBands();
   drawConfetti();
   drawBanner();
   if (G.phase === 'replay') drawReplayOverlay();
@@ -5947,7 +5949,7 @@ function drawBillboards(c) {
 }
 // v72 QB EYES: helmet edges and pocket pressure, drawn over the field view (under the HUD)
 function drawHelmet() {
-  const Y0 = WT, H = cv.height - WBOT - Y0, W = cv.width, cxp = W / 2, cyp = Y0 + H * 0.62;
+  const Y0 = WT, H = cv.height - Y0, W = cv.width, cxp = W / 2, cyp = Y0 + H * 0.62;
   let p = 0;
   if (CFG.pressureFx && G.phase === 'live' && G.sub === 'pocket' && G.qb && ball.holder === G.qb) {
     let d = 99; for (const q of P) if (q.team === 1 && (q.role === 'DL' || q.job === 'rush' || q.job === 'blitz')) d = Math.min(d, hyp(q.x - G.qb.x, q.y - G.qb.y));
@@ -11808,27 +11810,7 @@ function uiFit() {
   root.classList.toggle('narrow', narrow);
   root.style.zoom = z; root.style.setProperty('--vh', (innerHeight / z) + 'px');
 }
-addEventListener('resize', () => { if (CR.root && !CR.root.hidden) { uiFit(); uiFill(CR.root); } });
-// the pixel fonts load after the first screen is built and change its height: fit again when they arrive
-try { const refit = () => { if (CR.root && !CR.root.hidden) { uiFit(); uiFill(CR.root); } }; document.fonts.ready.then(refit); document.fonts.addEventListener('loadingdone', refit); } catch (e) {}
-// v113 (harrison: dead space at the bottom of the menus on iPad and phones): after a screen is built, zoom it up until
-// its content fills the height (the layout never gets narrower than 500px, or 400px on phones); a long screen stays scrollable
-function uiFill(root) {
-  const col = root.querySelector('.col'); if (!col || root.hidden) return;
-  const z0 = parseFloat(root.style.zoom) || 1, zMax = Math.min(innerWidth / 440, z0 * 1.35);
-  col.classList.remove('spread');
-  if (root.scrollHeight > root.clientHeight + 1) return;
-  if (z0 >= zMax * 0.99) { let h = 0; for (const k of col.children) h += k.getBoundingClientRect().height; if (CR.screen !== 'title' && h > innerHeight * 0.7) col.classList.add('spread'); return; }
-  const set = z => { root.style.zoom = z; root.style.setProperty('--vh', (innerHeight / z) + 'px'); root.classList.toggle('narrow', innerWidth / z < 520); };
-  // fits = nothing scrolls and no button label is cut off
-  const fits = () => root.scrollHeight <= root.clientHeight + 1 && root.scrollWidth <= root.clientWidth + 1 && ![...root.querySelectorAll('button')].some(b => b.offsetParent && b.scrollWidth > b.clientWidth + 1);
-  let lo = z0, hi = zMax;
-  // whatever space is still left is shared out between the blocks instead of one empty hole above the footer
-  const spread = () => { if (CR.screen === 'title' || root.scrollHeight > root.clientHeight + 1) return; let h = 0; for (const k of col.children) h += k.getBoundingClientRect().height; if (h > innerHeight * 0.7) col.classList.add('spread'); };
-  set(hi); if (fits()) { spread(); return; }
-  for (let i = 0; i < 6; i++) { const m = (lo + hi) / 2; set(m); if (fits()) lo = m; else hi = m; }
-  set(lo); spread();
-}
+addEventListener('resize', () => { if (CR.root && !CR.root.hidden) uiFit(); });   // v114: harrison preferred the v112 menu look (no fill zoom)
 // the soundtrack names each new song for a few seconds on the menus (engine.js trackPlay)
 function nowPlaying(name) {
   if (!CR.np) { CR.np = el('div', { id: 'nowplay' }); document.body.append(CR.np); }
@@ -11845,7 +11827,6 @@ function uiShow(screen) {
   uiFit();
   ({ paper: viewPaper, title: viewTitle, create: viewCreate, arch: viewArch, team: viewTeam, home: viewHome, pre: viewPre, post: viewPost, end: viewEnd, backup: viewBackup, confirm: viewConfirm, drill: viewDrill, drillpost: viewDrillPost, school: viewSchool, hsevent: viewHS, pause: viewPause, recruit: viewRecruit, chal: viewChal, old: viewOld }[screen] || (window.LAB_VIEWS || {})[screen] || viewTitle)(v);
   if (CR.c) cSave();
-  uiFill(root);
   showTip(root, screen);
 }
 // ---- v112 panel: COACH'S TIPS, a short note the first time you open each career screen (per device; title turns them off/on) ----
