@@ -1864,6 +1864,12 @@ const TRACKS = [
 // share build (build_share.py sets SHARE_BUILD): the copy for friends leaves out the copyrighted Primetime / NFL Films recordings
 const SHARE = typeof SHARE_BUILD !== 'undefined' && SHARE_BUILD;
 if (SHARE) for (let i = TRACKS.length - 1; i >= 0; i--) if (/^(primetime|pt_|nflf_)/.test(TRACKS[i].id)) TRACKS.splice(i, 1);
+// 2026-11-01: harrison's picks from the original NFL Films / Primetime-style songs (music/composer, free to share) replace them
+if (SHARE) TRACKS.push({ id: 'og_iron_horizon', gain: 1.45, name: 'IRON HORIZON' }, { id: 'og_gridiron_saga', gain: 1.45, name: 'GRIDIRON SAGA' },
+  { id: 'og_blitz_package', gain: 1.45, name: 'BLITZ PACKAGE' }, { id: 'og_two_minute_warning', gain: 1.45, name: 'TWO-MINUTE WARNING' },
+  { id: 'og_sudden_change', gain: 1.45, name: 'SUDDEN CHANGE' }, { id: 'og_overtime_clock', gain: 1.45, name: 'OVERTIME CLOCK' },
+  { id: 'og_blackout_sunday', gain: 1.45, name: 'BLACKOUT SUNDAY' }, { id: 'og_spread_offense', gain: 1.45, name: 'SPREAD OFFENSE' },
+  { id: 'og_thunder_ridge', gain: 1.45, name: 'THUNDER RIDGE' });
 // harrison 2026-10-24: the menus play the music like a soundtrack. Each song plays to its end (my rendered loops play
 // twice), then the next one starts; a game pauses the song and the next menu picks it up where it stopped.
 // The order is shuffled, and reshuffled every time the whole list has played.
