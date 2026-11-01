@@ -2,7 +2,7 @@
 
 A vertical, touch-screen football game: play quarterback from high school through college to the NFL.
 
-**Play:** https://hlarner6.github.io/new-star-qb/
+**Play:** https://hlarner6.github.io/New-star-qb/
 
 On a phone or iPad, open the link in Safari or Chrome and use Share → Add to Home Screen to play full screen.
 Saves stay on your own device.
